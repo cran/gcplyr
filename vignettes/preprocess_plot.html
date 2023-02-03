@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Mike Blazanin" />
+
+
+<title>Pre-processing and plotting data</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Pre-processing and plotting data</h1>
+<h4 class="author">Mike Blazanin</h4>
+
+
+<div id="TOC">
+<ul>
+<li><a href="#where-are-we-so-far" id="toc-where-are-we-so-far">Where
+are we so far?</a></li>
+<li><a href="#pre-processing" id="toc-pre-processing">Pre-processing</a>
+<ul>
+<li><a href="#pre-processing-excluding-data" id="toc-pre-processing-excluding-data">Pre-processing: excluding
+data</a></li>
+<li><a href="#pre-processing-converting-dates-times-into-numeric" id="toc-pre-processing-converting-dates-times-into-numeric">Pre-processing:
+converting dates &amp; times into numeric</a></li>
+</ul></li>
+<li><a href="#plotting-your-data" id="toc-plotting-your-data">Plotting
+your data</a></li>
+<li><a href="#whats-next" id="toc-whats-next">What’s next?</a></li>
+</ul>
+</div>
+
+<div id="where-are-we-so-far" class="section level1">
+<h1>Where are we so far?</h1>
+<ol style="list-style-type: decimal">
+<li>Introduction: <code>vignette(&quot;gcplyr&quot;)</code></li>
+<li>Importing and transforming data:
+<code>vignette(&quot;import_transform&quot;)</code></li>
+<li>Incorporating design information:
+<code>vignette(&quot;incorporate_designs&quot;)</code></li>
+<li><strong>Pre-processing and plotting your data:</strong>
+<code>vignette(&quot;preprocess_plot&quot;)</code></li>
+<li>Processing your data: <code>vignette(&quot;process&quot;)</code></li>
+<li>Analyzing your data: <code>vignette(&quot;analyze&quot;)</code></li>
+<li>Dealing with noise: <code>vignette(&quot;noise&quot;)</code></li>
+<li>Statistics, merging other data, and other resources:
+<code>vignette(&quot;conclusion&quot;)</code></li>
+</ol>
+<p>So far, we’ve imported and transformed our measures, then combined
+them with our design information. Now we’re going to do some final
+pre-processing steps and show how to easily plot our data with
+<code>ggplot</code>.</p>
+<p>If you haven’t already, load the necessary packages.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gcplyr)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(lubridate)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Attaching package: &#39;lubridate&#39;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; The following objects are masked from &#39;package:base&#39;:</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;     date, intersect, setdiff, union</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">#This code was previously explained</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co">#Here we&#39;re re-running it so it&#39;s available for us to work with</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>example_tidydata <span class="ot">&lt;-</span> <span class="fu">trans_wide_to_tidy</span>(example_widedata_noiseless,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>                                       <span class="at">id_cols =</span> <span class="st">&quot;Time&quot;</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>example_design <span class="ot">&lt;-</span> <span class="fu">make_design</span>(</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">pattern_split =</span> <span class="st">&quot;,&quot;</span>, <span class="at">nrows =</span> <span class="dv">8</span>, <span class="at">ncols =</span> <span class="dv">12</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Bacteria_strain&quot;</span> <span class="ot">=</span> <span class="fu">make_designpattern</span>(</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">paste</span>(<span class="st">&quot;Strain&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>),</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>, <span class="at">pattern =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>, <span class="at">byrow =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Bacteria_strain&quot;</span> <span class="ot">=</span> <span class="fu">make_designpattern</span>(</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">paste</span>(<span class="st">&quot;Strain&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>),</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">7</span><span class="sc">:</span><span class="dv">12</span>, <span class="at">pattern =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>, <span class="at">byrow =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Phage&quot;</span> <span class="ot">=</span> <span class="fu">make_designpattern</span>(</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;No Phage&quot;</span>), <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>, <span class="at">pattern =</span> <span class="st">&quot;1&quot;</span>),</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Phage&quot;</span> <span class="ot">=</span> <span class="fu">make_designpattern</span>(</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;Phage Added&quot;</span>), <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">7</span><span class="sc">:</span><span class="dv">12</span>, <span class="at">pattern =</span> <span class="st">&quot;1&quot;</span>))</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">merge_dfs</span>(example_tidydata, example_design)</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Joining, by = &quot;Well&quot;</span></span></code></pre></div>
+</div>
+<div id="pre-processing" class="section level1">
+<h1>Pre-processing</h1>
+<p>Now that we have our data and designs merged, we’re almost ready to
+start processing and analyzing them. However, first we need to carry out
+any necessary pre-processing steps, like excluding wells that were
+contaminated or empty, and converting time formats to numeric.</p>
+<div id="pre-processing-excluding-data" class="section level2">
+<h2>Pre-processing: excluding data</h2>
+<p>In some cases, we want to remove some of the wells from our growth
+curves data before we carry on with downstream analyses. For instance,
+they may have been left empty, contained negative controls, or were
+contaminated. We can use <code>dplyr</code>’s <code>filter</code>
+function to remove those wells that meet criteria we want to
+exclude.</p>
+<p>For instance, let’s imagine that we realized that we put the wrong
+media into Well B1, and so we should remove it from our analyses. In
+that case, we can simply:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>example_data_and_designs_filtered <span class="ot">&lt;-</span> <span class="fu">filter</span>(ex_dat_mrg, Well <span class="sc">!=</span> <span class="st">&quot;B1&quot;</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(example_data_and_designs_filtered)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   Time Well Measurements Bacteria_strain    Phage</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1    0   A1        0.002        Strain 1 No Phage</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2    0   C1        0.002       Strain 13 No Phage</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3    0   D1        0.002       Strain 19 No Phage</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4    0   E1        0.002       Strain 25 No Phage</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5    0   F1        0.002       Strain 31 No Phage</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6    0   G1        0.002       Strain 37 No Phage</span></span></code></pre></div>
+<p>Now we can see that all rows from Well B1 have been excluded. We
+could do something similar if we realized that a Bacterial strain was
+contaminated. For instance, if strain 13 was contaminated, we could
+exclude it (and Well B1) as follows:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>example_data_and_designs_filtered <span class="ot">&lt;-</span> </span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(ex_dat_mrg, </span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>         Well <span class="sc">!=</span> <span class="st">&quot;B1&quot;</span>, Bacteria_strain <span class="sc">!=</span> <span class="st">&quot;Strain 13&quot;</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(example_data_and_designs_filtered)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   Time Well Measurements Bacteria_strain    Phage</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1    0   A1        0.002        Strain 1 No Phage</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2    0   D1        0.002       Strain 19 No Phage</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3    0   E1        0.002       Strain 25 No Phage</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4    0   F1        0.002       Strain 31 No Phage</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5    0   G1        0.002       Strain 37 No Phage</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6    0   H1        0.002       Strain 43 No Phage</span></span></code></pre></div>
+</div>
+<div id="pre-processing-converting-dates-times-into-numeric" class="section level2">
+<h2>Pre-processing: converting dates &amp; times into numeric</h2>
+<p>Growth curve data produced by a plate reader often encodes the
+timestamp information as a string (e.g. “2:45:11” for 2 hours, 45
+minutes, and 11 seconds), while downstream analyses need timestamp
+information as a numeric (e.g. number of seconds elapsed). Luckily,
+others have written great packages that make it easy to convert from
+common date-time text formats into plain numeric formats. Here, we’ll
+see how to use <code>lubridate</code> to do so:</p>
+<p>First we have to create a data frame with time saved as it might be
+by a plate reader. As usual, <strong>don’t worry how this block of code
+works</strong>, since it’s just creating an example file in the same
+format as that output by a plate reader.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg<span class="sc">$</span>Time <span class="ot">&lt;-</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">paste</span>(ex_dat_mrg<span class="sc">$</span>Time <span class="sc">%/%</span> <span class="dv">3600</span>,</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>        <span class="fu">formatC</span>((ex_dat_mrg<span class="sc">$</span>Time <span class="sc">%%</span> <span class="dv">3600</span>) <span class="sc">%/%</span> <span class="dv">60</span>, </span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>                <span class="at">width =</span> <span class="dv">2</span>, <span class="at">flag =</span> <span class="dv">0</span>),</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>        <span class="fu">formatC</span>((ex_dat_mrg<span class="sc">$</span>Time <span class="sc">%%</span> <span class="dv">3600</span>) <span class="sc">%%</span> <span class="dv">60</span>,</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>                <span class="at">width =</span> <span class="dv">2</span>, <span class="at">flag =</span> <span class="dv">0</span>),</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>        <span class="at">sep =</span> <span class="st">&quot;:&quot;</span>)</span></code></pre></div>
+<p>Let’s take a look at this data.frame. This shows the
+<code>Time</code> column as it might be written by a plate reader.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(ex_dat_mrg)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;      Time Well Measurements Bacteria_strain    Phage</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 0:00:00   A1        0.002        Strain 1 No Phage</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2 0:00:00   B1        0.002        Strain 7 No Phage</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3 0:00:00   C1        0.002       Strain 13 No Phage</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4 0:00:00   D1        0.002       Strain 19 No Phage</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5 0:00:00   E1        0.002       Strain 25 No Phage</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6 0:00:00   F1        0.002       Strain 31 No Phage</span></span></code></pre></div>
+<p>We can see that our <code>Time</code> aren’t written in an easy
+numeric. Instead, they’re in a format that’s easy for a human to
+understand (but unfortunately not very usable for analysis).</p>
+<p>Let’s use <code>lubridate</code> to convert this text into a usable
+format. <code>lubridate</code> has a whole family of functions that can
+parse text with hour, minute, and/or second components. You can use
+<code>hms</code> if your text contains hour, minute, and second
+information, <code>hm</code> if it only contains hour and minute
+information, and <code>ms</code> if it only contains minute and second
+information.</p>
+<p>Since the example has all three, we’ll use <code>hms</code>. Once
+<code>hms</code> has parsed the text, we’ll use another function to
+convert the output of <code>hms</code> into a pure numeric value:
+<code>time_length</code>. By default, <code>time_length</code> returns
+in units of seconds, but you can change that by changing the
+<code>unit</code> argument to <code>time_length</code>. See
+<code>?time_length</code> for details.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co">#We have previously loaded lubridate, but if you haven&#39;t already then</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="co">#make sure to add the line:</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co">#   library(lubridate)</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg<span class="sc">$</span>Time <span class="ot">&lt;-</span> <span class="fu">time_length</span>(<span class="fu">hms</span>(ex_dat_mrg<span class="sc">$</span>Time))</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(ex_dat_mrg)</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   Time Well Measurements Bacteria_strain    Phage</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1    0   A1        0.002        Strain 1 No Phage</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2    0   B1        0.002        Strain 7 No Phage</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3    0   C1        0.002       Strain 13 No Phage</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4    0   D1        0.002       Strain 19 No Phage</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5    0   E1        0.002       Strain 25 No Phage</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6    0   F1        0.002       Strain 31 No Phage</span></span></code></pre></div>
+<p>And now we can see that we’ve gotten nice numeric <code>Time</code>
+values! So we can proceed with the next steps of the analysis.</p>
+</div>
+</div>
+<div id="plotting-your-data" class="section level1">
+<h1>Plotting your data</h1>
+<p>Once your data has been merged and times have been converted to
+numeric, we can easily plot our data using the <code>ggplot2</code>
+package. That’s because <code>ggplot2</code> was specifically built on
+the assumption that data would be tidy-shaped, which ours is! We won’t
+go into depth on how to use <code>ggplot</code> here, but there are
+three main commands to the plot below:</p>
+<ul>
+<li><code>ggplot</code> - the ggplot function is where you specify the
+<code>data.frame</code> you would like to use and the
+<em>aes</em>thetics of the plot (the x and y axes you would like)</li>
+<li><code>geom_line</code> - tells <code>ggplot</code> how we would like
+to plot the data, in this case with a line (another common
+<code>geom</code> for time-series data is <code>geom_point</code>)</li>
+<li><code>facet_wrap</code> - tells <code>ggplot</code> to plot each
+Well in a separate facet</li>
+</ul>
+<p><strong>We’ll be using this format to plot our data throughout the
+remainder of this vignette</strong></p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co">#We have previously loaded ggplot2, but if you haven&#39;t already then</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="co">#make sure to add the line:</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co">#    library(ggplot2)</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="co">#First, we&#39;ll reorder the Well levels so they plot in the correct order</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg<span class="sc">$</span>Well <span class="ot">&lt;-</span> </span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">factor</span>(ex_dat_mrg<span class="sc">$</span>Well,</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>         <span class="at">levels =</span> <span class="fu">paste</span>(<span class="fu">rep</span>(LETTERS[<span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>], <span class="at">each =</span> <span class="dv">12</span>), <span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>, <span class="at">sep =</span> <span class="st">&quot;&quot;</span>))</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> ex_dat_mrg, <span class="fu">aes</span>(<span class="at">x =</span> Time, <span class="at">y =</span> Measurements)) <span class="sc">+</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>Well, <span class="at">nrow =</span> <span class="dv">8</span>, <span class="at">ncol =</span> <span class="dv">12</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>Generally speaking, <strong>from here on you should plot your data
+frequently</strong>, and in every way you can think of! <strong>After
+every processing and analysis step, visualize both the input data and
+output data</strong> to understand what the processing and analysis
+steps are doing and whether they are the right choices for your
+particular data (this vignette will be doing that too!)</p>
+</div>
+<div id="whats-next" class="section level1">
+<h1>What’s next?</h1>
+<p>Now that you’ve pre-processed and visualized your data, it’s time to
+process (in most cases) and analyze (pretty much always) it!</p>
+<ol style="list-style-type: decimal">
+<li>Introduction: <code>vignette(&quot;gcplyr&quot;)</code></li>
+<li>Importing and transforming data:
+<code>vignette(&quot;import_transform&quot;)</code></li>
+<li>Incorporating design information:
+<code>vignette(&quot;incorporate_designs&quot;)</code></li>
+<li>Pre-processing and plotting your data:
+<code>vignette(&quot;preprocess_plot&quot;)</code></li>
+<li><strong>Processing your data:
+<code>vignette(&quot;process&quot;)</code></strong></li>
+<li><strong>Analyzing your data:
+<code>vignette(&quot;analyze&quot;)</code></strong></li>
+<li>Dealing with noise: <code>vignette(&quot;noise&quot;)</code></li>
+<li>Statistics, merging other data, and other resources:
+<code>vignette(&quot;conclusion&quot;)</code></li>
+</ol>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

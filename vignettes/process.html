@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Mike Blazanin" />
+
+
+<title>Processing data</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Processing data</h1>
+<h4 class="author">Mike Blazanin</h4>
+
+
+<div id="TOC">
+<ul>
+<li><a href="#where-are-we-so-far" id="toc-where-are-we-so-far">Where
+are we so far?</a></li>
+<li><a href="#how-to-process-and-analyze-your-data" id="toc-how-to-process-and-analyze-your-data">How to process and analyze
+your data</a>
+<ul>
+<li><a href="#a-brief-primer-on-dplyr" id="toc-a-brief-primer-on-dplyr">A brief primer on dplyr</a></li>
+</ul></li>
+<li><a href="#CalculatingDerivatives" id="toc-CalculatingDerivatives">Processing data: calculating
+derivatives</a>
+<ul>
+<li><a href="#a-simple-derivative" id="toc-a-simple-derivative">A simple
+derivative</a></li>
+<li><a href="#per-capita-derivative" id="toc-per-capita-derivative">Per-capita derivative</a></li>
+<li><a href="#changing-the-derivative-units" id="toc-changing-the-derivative-units">Changing the derivative
+units</a></li>
+</ul></li>
+<li><a href="#whats-next" id="toc-whats-next">What’s next?</a></li>
+</ul>
+</div>
+
+<div id="where-are-we-so-far" class="section level1">
+<h1>Where are we so far?</h1>
+<ol style="list-style-type: decimal">
+<li>Introduction: <code>vignette(&quot;gcplyr&quot;)</code></li>
+<li>Importing and transforming data:
+<code>vignette(&quot;import_transform&quot;)</code></li>
+<li>Incorporating design information:
+<code>vignette(&quot;incorporate_designs&quot;)</code></li>
+<li>Pre-processing and plotting your data:
+<code>vignette(&quot;preprocess_plot&quot;)</code></li>
+<li><strong>Processing your data:</strong>
+<code>vignette(&quot;process&quot;)</code></li>
+<li>Analyzing your data: <code>vignette(&quot;analyze&quot;)</code></li>
+<li>Dealing with noise: <code>vignette(&quot;noise&quot;)</code></li>
+<li>Statistics, merging other data, and other resources:
+<code>vignette(&quot;conclusion&quot;)</code></li>
+</ol>
+<p>So far, we’ve imported and transformed our measures, combined them
+with our design information, and pre-processed and plotted our data. Now
+we’re going to do some processing of our raw data: calculating
+derivatives.</p>
+<p>If you haven’t already, load the necessary packages.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gcplyr)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">#This code was previously explained</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co">#Here we&#39;re re-running it so it&#39;s available for us to work with</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>example_tidydata <span class="ot">&lt;-</span> <span class="fu">trans_wide_to_tidy</span>(example_widedata_noiseless,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>                                       <span class="at">id_cols =</span> <span class="st">&quot;Time&quot;</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>example_design <span class="ot">&lt;-</span> <span class="fu">make_design</span>(</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">pattern_split =</span> <span class="st">&quot;,&quot;</span>, <span class="at">nrows =</span> <span class="dv">8</span>, <span class="at">ncols =</span> <span class="dv">12</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Bacteria_strain&quot;</span> <span class="ot">=</span> <span class="fu">make_designpattern</span>(</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">paste</span>(<span class="st">&quot;Strain&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>),</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>, <span class="at">pattern =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>, <span class="at">byrow =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Bacteria_strain&quot;</span> <span class="ot">=</span> <span class="fu">make_designpattern</span>(</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">paste</span>(<span class="st">&quot;Strain&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>),</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">7</span><span class="sc">:</span><span class="dv">12</span>, <span class="at">pattern =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>, <span class="at">byrow =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Phage&quot;</span> <span class="ot">=</span> <span class="fu">make_designpattern</span>(</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;No Phage&quot;</span>), <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>, <span class="at">pattern =</span> <span class="st">&quot;1&quot;</span>),</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Phage&quot;</span> <span class="ot">=</span> <span class="fu">make_designpattern</span>(</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;Phage Added&quot;</span>), <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">7</span><span class="sc">:</span><span class="dv">12</span>, <span class="at">pattern =</span> <span class="st">&quot;1&quot;</span>))</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">merge_dfs</span>(example_tidydata, example_design)</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Joining, by = &quot;Well&quot;</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg<span class="sc">$</span>Well <span class="ot">&lt;-</span> </span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">factor</span>(ex_dat_mrg<span class="sc">$</span>Well,</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>         <span class="at">levels =</span> <span class="fu">paste</span>(<span class="fu">rep</span>(LETTERS[<span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>], <span class="at">each =</span> <span class="dv">12</span>), <span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>, <span class="at">sep =</span> <span class="st">&quot;&quot;</span>))</span></code></pre></div>
+</div>
+<div id="how-to-process-and-analyze-your-data" class="section level1">
+<h1>How to process and analyze your data</h1>
+<p>With your data and design information pre-processed, <strong>your
+dataset is now organized in a way that’s easy to export and
+analyze</strong>. It is also at this point that the next steps for what
+you can do diversify into many options.</p>
+<p>Broadly speaking, there are two main approaches to analyzing growth
+curves data:</p>
+<ol style="list-style-type: decimal">
+<li>directly quantify attributes of the growth dynamics</li>
+<li>fit the growth dynamics with a mathematical model, then extract
+parameters from the fitted model</li>
+</ol>
+<p>The remaining functions of <code>gcplyr</code> can facilitate
+analyses following the first approach: directly quantifying attributes
+of the observed dynamics. If you’re interested in exploring
+model-fitting approaches, which can provide enormous analytical power,
+check out the <strong>Other growth curve analysis packages</strong>
+section in vignette(“conclusion”). At this point, since the data is now
+well-organized, advanced users may also decide they want to write their
+own custom analyses (in lieu of, or alongside, <code>gcplyr</code>-based
+and/or fitting-based analyses).</p>
+<p>So, how do we directly quantify attributes of growth curves? First,
+we may need to calculate derivatives of our data. The density and
+derivative values will be what we analyze to identify features of our
+growth curves. <code>gcplyr</code> has a number of functions that
+facilitate these steps.</p>
+<p>However, unlike the import, transformation, and merging steps we’ve
+done so far, different projects may require different analyses, and not
+all users will have the same analysis steps. The <a href="#CalculatingDerivatives">Calculating Derivatives</a> section of
+this article, and the <a href="vignette(%22analyze%22)">Analyzing
+Data</a> and <a href="vignette(%22noise%22)">Dealing with Noise</a>
+vignettes, therefore, are written to highlight the functions available
+and provide examples of common analyses that you may want to run, rather
+than prescribing a set of analysis steps that everyone must do.</p>
+<p>Before we dig into processing and analyzing our data, we first need
+to familiarize ourselves with the <code>dplyr</code> package and its
+functions <code>group_by</code> and <code>mutate</code>. Why? Because
+the upcoming <code>gcplyr</code> processing functions are <em>best</em>
+used <strong>within</strong> <code>dplyr::mutate</code>. <strong>If
+you’re already familiar with <code>dplyr</code>, feel free to skip this
+primer.</strong> If you’re not familiar yet, don’t worry! This section
+provides a primer that will teach you all you need to know on using
+<code>group_by</code> and <code>mutate</code> with <code>gcplyr</code>
+functions.</p>
+<div id="a-brief-primer-on-dplyr" class="section level2">
+<h2>A brief primer on dplyr</h2>
+<p>The <code>R</code> package <code>dplyr</code> provides a “grammar of
+data manipulation” that is useful for a broad array of data analysis
+tasks (in fact, <code>dplyr</code> is the direct inspiration for the
+name of this package!) For our purposes right now, we’re going to focus
+on two particular functions: <code>group_by</code> and
+<code>mutate</code>.</p>
+<p>The <code>mutate</code> function in <code>dplyr</code> allows users
+to easily create new columns in their <code>data.frame</code>’s. For us,
+we’re going to use <code>mutate</code> to create columns with our data
+and the derivatives we calculate. However, we want to make sure that
+derivative-calculating is done on <em>each</em> unique well
+independently. In order to do that, we’re first going to use the
+<code>group_by</code> function, which allows users to group the rows of
+their <code>data.frame</code>’s into groups that <code>mutate</code>
+will then treat independently.</p>
+<p>For growth curves, this means we will:</p>
+<ol style="list-style-type: decimal">
+<li><code>group_by</code> our data so that every unique well is a
+group</li>
+<li><code>mutate</code> to create new columns with our data and
+calculated derivatives</li>
+</ol>
+<p>Let’s walk through a simple example</p>
+<p>For <code>group_by</code>, we need to specify the
+<code>data.frame</code> to be grouped, and then we want to list all the
+columns needed to identify each unique well in our dataset. Typically,
+this includes all of our design columns along with the plate name and
+well name. Make sure you’re <em>not</em> grouping by Time, Absorbance,
+or anything else that varies <em>within</em> a well, since if you do
+<code>dplyr</code> will group timepoints within a well separately.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">group_by</span>(ex_dat_mrg, Well, Bacteria_strain, Phage)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(ex_dat_mrg)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 6 × 5</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # Groups:   Well, Bacteria_strain, Phage [6]</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    Time Well  Measurements Bacteria_strain Phage   </span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;dbl&gt; &lt;fct&gt;        &lt;dbl&gt; &lt;chr&gt;           &lt;chr&gt;   </span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1     0 A1           0.002 Strain 1        No Phage</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2     0 B1           0.002 Strain 7        No Phage</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3     0 C1           0.002 Strain 13       No Phage</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4     0 D1           0.002 Strain 19       No Phage</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5     0 E1           0.002 Strain 25       No Phage</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6     0 F1           0.002 Strain 31       No Phage</span></span></code></pre></div>
+<p>Notice that this hasn’t changed anything about our
+<code>data.frame</code>, but <code>R</code> now knows what the groups
+are. Now any calculations will be carried out on each unique well
+independently.</p>
+<p>To use <code>mutate</code>, we simply have to specify:</p>
+<ol style="list-style-type: decimal">
+<li>the name of the variable we want results saved to</li>
+<li>the function that calculates the new column</li>
+</ol>
+<p>Note that the function has to return a vector that is as long as the
+number of data points in the group.</p>
+<p>For a simple example, in the code below we’ve simply added one to the
+<code>Measurements</code> values and saved it in a column named
+<code>Measurements_plus1</code>:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(ex_dat_mrg,</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">Measurements_plus1 =</span> Measurements<span class="sc">+</span><span class="dv">1</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(ex_dat_mrg)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 6 × 6</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # Groups:   Well, Bacteria_strain, Phage [6]</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    Time Well  Measurements Bacteria_strain Phage    Measurements_plus1</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;dbl&gt; &lt;fct&gt;        &lt;dbl&gt; &lt;chr&gt;           &lt;chr&gt;                 &lt;dbl&gt;</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1     0 A1           0.002 Strain 1        No Phage               1.00</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2     0 B1           0.002 Strain 7        No Phage               1.00</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3     0 C1           0.002 Strain 13       No Phage               1.00</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4     0 D1           0.002 Strain 19       No Phage               1.00</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5     0 E1           0.002 Strain 25       No Phage               1.00</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6     0 F1           0.002 Strain 31       No Phage               1.00</span></span></code></pre></div>
+<p>If you want additional columns, you simply add them to the
+<code>mutate</code>. For instance, if we also want a column with the
+<code>Measurements</code> plus two, we just add that as a second
+argument:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(ex_dat_mrg,</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">Measurements_plus1 =</span> Measurements<span class="sc">+</span><span class="dv">1</span>,</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>         <span class="at">Measurements_plus2 =</span> Measurements<span class="sc">+</span><span class="dv">2</span>)</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(ex_dat_mrg)</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 6 × 7</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # Groups:   Well, Bacteria_strain, Phage [6]</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    Time Well  Measurements Bacteria_strain Phage    Measurements_plus1 Measure…¹</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;dbl&gt; &lt;fct&gt;        &lt;dbl&gt; &lt;chr&gt;           &lt;chr&gt;                 &lt;dbl&gt;     &lt;dbl&gt;</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1     0 A1           0.002 Strain 1        No Phage               1.00      2.00</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2     0 B1           0.002 Strain 7        No Phage               1.00      2.00</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3     0 C1           0.002 Strain 13       No Phage               1.00      2.00</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4     0 D1           0.002 Strain 19       No Phage               1.00      2.00</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5     0 E1           0.002 Strain 25       No Phage               1.00      2.00</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6     0 F1           0.002 Strain 31       No Phage               1.00      2.00</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # … with abbreviated variable name ¹​Measurements_plus2</span></span></code></pre></div>
+<p>This is a rather simple example, but in the next sections I show how
+we can use <code>mutate</code> with <code>calc_deriv</code> to create
+new columns containing derivatives. If you want to learn more,
+<code>dplyr</code> has extensive documentation and examples of its own
+online. Feel free to explore them as desired, but this primer should be
+sufficient to use the <code>gcplyr</code> processing functions, which
+(as a reminder) are best used <em>within</em> <code>mutate</code>.</p>
+</div>
+</div>
+<div id="CalculatingDerivatives" class="section level1">
+<h1>Processing data: calculating derivatives</h1>
+<p>In many cases, identifying features of a growth curve requires
+looking not only at the absorbance data over time, but the slope of the
+absorbance data over time. <code>gcplyr</code> includes a
+<code>calc_deriv</code> function that can be used to calculate the
+empirical derivative (slope) of absorbance data over time.</p>
+<div id="a-simple-derivative" class="section level2">
+<h2>A simple derivative</h2>
+<p>To calculate a simple derivative (the slope of our original data)
+using <code>calc_deriv</code>, we simply have to provide the x and y
+values. Note that this is <strong>not</strong> the growth rate of the
+cells, but rather is a measure of how quickly the whole population was
+growing at each time point. This is useful for identifying events like
+population declines, or multiple rounds of growth.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">mutate</span>(ex_dat_mrg,</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>                     <span class="at">deriv =</span> <span class="fu">calc_deriv</span>(<span class="at">x =</span> Time, <span class="at">y =</span> Measurements))</span></code></pre></div>
+<p>To visualize these results, let’s look at a few wells that are
+representative of the overall diversity of dynamics in our example data.
+(In your own code, you should visualize all your data).</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>sample_wells <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;A1&quot;</span>, <span class="st">&quot;F1&quot;</span>, <span class="st">&quot;F10&quot;</span>, <span class="st">&quot;E11&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Now let&#39;s plot the derivative</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(ex_dat_mrg, Well <span class="sc">%in%</span> sample_wells),</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> Time, <span class="at">y =</span> deriv)) <span class="sc">+</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>Well, <span class="at">scales =</span> <span class="st">&quot;free&quot;</span>)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Warning: Removed 1 row containing missing values (`geom_line()`).</span></span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>The first thing you might notice is that some of these lines aren’t
+as smooth as you might expect. Why is that? This noise in the
+derivatives is actually being created by the limited resolution of the
+plate reader. Since plate readers can commonly only read to a resolution
+of 0.001, this means that values jump by at least 0.001 at each step,
+even if the true difference should be smaller.</p>
+<p>That aside, from the plots above we can clearly see when the upward
+slope of the total population was the steepest, and also when the
+populations have declined in wells with phages. In Well E11 we can even
+see when the bacteria grow again later after phage-driven declines. But
+these derivatives also make something more apparent that might not have
+been obvious visually in the raw density data: if we look in Well A1 we
+can see that there is a second peak of growth. It’s not as steep (the
+derivative is not as high), but it’s there. Such a pattern is common in
+bacterial growth curves and is called <em>diauxic growth</em>.</p>
+</div>
+<div id="per-capita-derivative" class="section level2">
+<h2>Per-capita derivative</h2>
+<p>If we want to calculate the growth rate of the cells, we need to use
+<code>calc_deriv</code> to return the <strong>per-capita</strong>
+derivative. Just as before, provide the x and y values, but now set
+<code>percapita = TRUE</code>. Note that in this case, you are required
+to specify a blank value, i.e. the value of your
+<code>Measurements</code> that corresponds to a population density of 0.
+If your data have already been normalized, simply add
+<code>blank = 0</code>.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">mutate</span>(ex_dat_mrg,</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>                     <span class="at">deriv_percap =</span> <span class="fu">calc_deriv</span>(<span class="at">x =</span> Time, <span class="at">y =</span> Measurements,</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">percapita =</span> <span class="cn">TRUE</span>, <span class="at">blank =</span> <span class="dv">0</span>))</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="co">#Now let&#39;s plot the per-capita derivative</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(ex_dat_mrg, Well <span class="sc">%in%</span> sample_wells),</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> Time, <span class="at">y =</span> deriv_percap)) <span class="sc">+</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>Well, <span class="at">scales =</span> <span class="st">&quot;free&quot;</span>)</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Warning: Removed 1 row containing missing values (`geom_line()`).</span></span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>Hmm, what’s going on here? Well, when bacterial densities are very
+close to 0, the per-capita growth rate can be very noisy. Luckily,
+<code>calc_deriv</code> includes a method that can reduce some of the
+effects of this noise. Instead of calculating the derivative of each
+point relative to the next, we can use a moving window of more than two
+points and fit a linear regression to this data. This can help reduce
+the effect of low densities.</p>
+<p>To use the fitting functionality of <code>calc_deriv</code>, we need
+to specify either the <code>window_width</code> parameter, or the
+<code>window_width_n</code> parameter. <code>window_width</code>
+specifies how wide the window used to include points for the fitting is
+in units of <code>x</code>, while <code>window_width_n</code> specifies
+it in number of data points. Here, we’ll demonstrate it’s use by fitting
+regressions that include five data points.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">mutate</span>(ex_dat_mrg,</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>                     <span class="at">deriv_percap5 =</span> <span class="fu">calc_deriv</span>(<span class="at">x =</span> Time, <span class="at">y =</span> Measurements, </span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">percapita =</span> <span class="cn">TRUE</span>, <span class="at">blank =</span> <span class="dv">0</span>,</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">window_width_n =</span> <span class="dv">5</span>))</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="co">#Now let&#39;s plot the derivative</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(ex_dat_mrg, Well <span class="sc">%in%</span> sample_wells),</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> Time, <span class="at">y =</span> deriv_percap5)) <span class="sc">+</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>Well, <span class="at">scales =</span> <span class="st">&quot;free&quot;</span>)</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Warning: Removed 4 rows containing missing values (`geom_line()`).</span></span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>Great! That reduced the effects of low densities greatly! When doing
+fitting to calculate the per-capita growth rate, we can alternatively do
+that fitting with log-transformed y-values. Because exponential growth
+is linear when y-values are log-transformed, this typically gives us a
+better estimate of the per-capita growth rate, although it can fail when
+y-values are at or below 0. Check out the documentation for
+<code>calc_deriv</code> for more details.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">mutate</span>(ex_dat_mrg,</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>                     <span class="at">deriv_percap5 =</span> <span class="fu">calc_deriv</span>(<span class="at">x =</span> Time, <span class="at">y =</span> Measurements, </span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">percapita =</span> <span class="cn">TRUE</span>, <span class="at">blank =</span> <span class="dv">0</span>,</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">window_width_n =</span> <span class="dv">5</span>, <span class="at">trans_y =</span> <span class="st">&quot;log&quot;</span>))</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="co">#Now let&#39;s plot the derivative</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(ex_dat_mrg, Well <span class="sc">%in%</span> sample_wells),</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> Time, <span class="at">y =</span> deriv_percap5)) <span class="sc">+</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>Well, <span class="at">scales =</span> <span class="st">&quot;free&quot;</span>)</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Warning: Removed 4 rows containing missing values (`geom_line()`).</span></span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>Great! Taking a look at our per-capita growth rates, we can see that
+all the bacteria had a lag period of no growth at the beginning before
+starting to grow and having an early peak in their growth rates.</p>
+</div>
+<div id="changing-the-derivative-units" class="section level2">
+<h2>Changing the derivative units</h2>
+<p>To convert your x-axis (time) units in your derivative calculations
+to a different unit, use the <code>x_scale</code> argument. Simply
+specify the ratio of your x units to the desired units. For instance, in
+our example data <code>x</code> is the number of <em>seconds</em> since
+the growth curve began. What if we wanted growth rate in
+<em>per-hour</em>? There are 3600 seconds in an hour, so we set
+<code>x_scale = 3600</code></p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> </span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(ex_dat_mrg,</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">deriv_percap_hr =</span> <span class="fu">calc_deriv</span>(<span class="at">x =</span> Time, <span class="at">y =</span> Measurements,</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">percapita =</span> <span class="cn">TRUE</span>, <span class="at">blank =</span> <span class="dv">0</span>,</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">window_width_n =</span> <span class="dv">5</span>, <span class="at">trans_y =</span> <span class="st">&quot;log&quot;</span>,</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">x_scale =</span> <span class="dv">3600</span>))</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="co">#Now let&#39;s plot the derivative in units of Abs/hour</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(ex_dat_mrg, Well <span class="sc">%in%</span> sample_wells),</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> Time, <span class="at">y =</span> deriv_percap_hr)) <span class="sc">+</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>Well, <span class="at">scales =</span> <span class="st">&quot;free&quot;</span>)</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Warning: Removed 4 rows containing missing values (`geom_line()`).</span></span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>Now we can see the bacterial growth rate in more-understandable
+units: peak growth rates are often around 1-2 divisions/hour.</p>
+</div>
+</div>
+<div id="whats-next" class="section level1">
+<h1>What’s next?</h1>
+<p>Now that you’ve processed your data, you’re ready to analyze it!</p>
+<ol style="list-style-type: decimal">
+<li>Introduction: <code>vignette(&quot;gcplyr&quot;)</code></li>
+<li>Importing and transforming data:
+<code>vignette(&quot;import_transform&quot;)</code></li>
+<li>Incorporating design information:
+<code>vignette(&quot;incorporate_designs&quot;)</code></li>
+<li>Pre-processing and plotting your data:
+<code>vignette(&quot;preprocess_plot&quot;)</code></li>
+<li>Processing your data: <code>vignette(&quot;process&quot;)</code></li>
+<li><strong>Analyzing your data:
+<code>vignette(&quot;analyze&quot;)</code></strong></li>
+<li>Dealing with noise: <code>vignette(&quot;noise&quot;)</code></li>
+<li>Statistics, merging other data, and other resources:
+<code>vignette(&quot;conclusion&quot;)</code></li>
+</ol>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
