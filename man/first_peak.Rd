@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions.R
 \name{first_peak}
 \alias{first_peak}
-\title{Find the first local peak of a numeric vector}
+\title{Find the first local maxima of a numeric vector}
 \usage{
 first_peak(
   y,
@@ -50,7 +50,7 @@ shallow maxima/minima.}
 
 \item{return}{One of c("index", "x", "y"), determining whether the function
 will return the index, x value, or y value associated with the
-first peak in y values}
+first maxima in y values}
 
 \item{return_endpoints}{Should the first or last value in \code{y}
 be allowed to be returned?}
@@ -68,15 +68,22 @@ If \code{return = "index"}, a vector of indices corresponding
           to local extrema in the data
 }
 \description{
-This function takes a vector of \code{y} values and returns the index
-(by default) of the first local maxima. It serves as a wrapper function
-for \code{find_local_extrema}
+This function has been deprecated in favor of the identical new 
+function \code{first_maxima}
 }
 \details{
+This function takes a vector of \code{y} values and returns the index
+(by default) of the first local maxima. It serves as a shortcut
+for \code{find_local_extrema(return_maxima = TRUE, return_minima = FALSE)[1]}
+
+
 If none of \code{window_width}, \code{window_width_n}, or 
 \code{window_height} are provided, default value of \code{window_width_n}
 will be used.
 
 This function is designed to be compatible for use within
- dplyr::group_by and dplyr::summarize
+ \code{dplyr::group_by} and \code{dplyr::summarize}
+}
+\seealso{
+[first_maxima()]
 }

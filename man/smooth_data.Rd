@@ -36,16 +36,16 @@ independently of the others.
 This provides an internally-implemented approach similar
 to \code{dplyr::group_by} and \code{dplyr::mutate}}
 
-\item{return_fitobject}{Boolean indicating whether entire object returned
+\item{return_fitobject}{logical indicating whether entire object returned
 by fitting function should be returned. If FALSE,
 just fitted values are returned.}
 }
 \value{
-If return_fitobject == FALSE:
+If \code{return_fitobject == FALSE:}
 
         A vector, the same length as \code{y}, with the now-smoothed y values
         
-        If return_fitobject == TRUE:
+        If \code{return_fitobject == TRUE:}
         
         A list the same length as unique(subset_by) where each element is
         an object of the same class as returned by the smoothing method
@@ -55,6 +55,12 @@ If return_fitobject == FALSE:
         containing the smoothed values of the response variable, and a 
         second element named 'residuals' containing the residuals of the
         fitted values and the input values
+        
+        **Note: the first version released after Sep 1, 2023 will change **
+        **this behavior** to instead maintain the class of the object 
+        returned by the smoothing method. After the change, not all methods 
+        will return an object with 'fitted' as the first element and 
+        'residuals' as the second element.
 }
 \description{
 This function calls other functions to smooth growth curve data

@@ -2,9 +2,18 @@
 % Please edit documentation in R/functions.R
 \name{make_designpattern}
 \alias{make_designpattern}
+\alias{mdp}
 \title{Make design pattern}
 \usage{
-make_designpattern(values, rows, cols, pattern, byrow = TRUE)
+make_designpattern(
+  values,
+  rows,
+  cols,
+  pattern = 1:length(values),
+  byrow = TRUE
+)
+
+mdp(values, rows, cols, pattern = 1:length(values), byrow = TRUE)
 }
 \arguments{
 \item{values}{Vector of values to use}
@@ -16,19 +25,24 @@ make_designpattern(values, rows, cols, pattern, byrow = TRUE)
 \item{pattern}{Numeric pattern itself, where numbers refer to entries
 in \code{values}}
 
-\item{byrow}{Boolean for whether pattern should be created by row}
+\item{byrow}{logical for whether pattern should be created by row}
 }
 \value{
 \code{list(values, rows, cols, pattern, byrow)}
 }
 \description{
-A helper function for use with make_tidydesign
+A helper function for use with \code{make_design}
 }
-\details{
-Example:
-my_example <- make_tidydesign(nrows = 8, ncols = 12,
-      design_element_name = make_designpattern(values = c("L", "G", "C"),
-                                                rows = 2:7, cols = 2:11,
-                                                pattern = "11223300",
-                                                byrow = TRUE))
+\examples{
+make_design(nrows = 8, ncols = 12,
+            design_element_name = make_designpattern(
+                 values = c("A", "B", "C"),
+                 rows = 2:7, 
+                 cols = 2:11,
+                 pattern = "112301",
+                 byrow = TRUE))
+
+}
+\seealso{
+[gcplyr::make_design()]
 }

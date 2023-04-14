@@ -45,11 +45,22 @@ test_that("canbe_numeric works as expected", {
   expect_equal(canbe.numeric(c(5, "6", "hello")), FALSE)
   
   expect_error(canbe.numeric(list("a" = 5, "x" = c(6, 7))))
+  
+  expect_equal(canbe.numeric("INF"), TRUE)
+  expect_equal(canbe.numeric("NAN"), TRUE)
+  expect_equal(canbe.numeric("INF", infinite_num = FALSE), FALSE)
+  expect_equal(canbe.numeric("NAN", infinite_num = FALSE), TRUE)
+  expect_equal(canbe.numeric("INF", nan_num = FALSE), TRUE)
+  expect_equal(canbe.numeric("NAN", nan_num = FALSE), FALSE)
 })
 
 
 test_that("rm_nas returns correctly", {
-  expect_equal(rm_nas(x = c(5, 6, NA, 7), na.rm = TRUE), 
+  expect_equal(rm_nas(x = 1:5, na.rm = TRUE),
+               list(x = 1:5, nas_indices_removed = NULL))
+  expect_equal(rm_nas(x = 1:5, y = 6:10, na.rm = TRUE),
+               list(x = 1:5, y = 6:10, nas_indices_removed = NULL))
+  expect_equal(rm_nas(x = c(5, 6, NA, 7), y = NULL, na.rm = TRUE), 
                list(x = c(5, 6, 7), y = NULL, nas_indices_removed = 3))
   expect_equal(rm_nas(x = c(5, 6, NA, 7), y = c(5, NA, 6, 7), na.rm = TRUE), 
                list(x = c(5, 7), y = c(5, 7), nas_indices_removed = c(2, 3)))
@@ -57,6 +68,10 @@ test_that("rm_nas returns correctly", {
                list(x = c(5, 7, 8), y = c(5, 6, 7), nas_indices_removed = 2))
   expect_equal(rm_nas(x = c(5, 6, 7, NA), y = c(5, 6, 7, 8), na.rm = TRUE), 
                list(x = c(5, 6, 7), y = c(5, 6, 7), nas_indices_removed = 4))
+  expect_equal(rm_nas(x = c(5, 6, 7, NA), y = c(5, 6, 7, 8),
+                      z = c(5, NA, 8, 9), na.rm = TRUE), 
+               list(x = c(5, 7), y = c(5, 7), z = c(5, 8),
+                    nas_indices_removed = c(2, 4)))
 })
 
 test_that("add_nas returns correctly", {
@@ -95,3 +110,30 @@ test_that("get_windows returns correctly", {
     list(NA, c(1, 2, 3), c(2, 3, 4), c(3, 4, 5), c(4, 5),
          c(6, 7), c(6, 7, 8), c(7, 8, 9), c(8, 9, 10), NA))
 })
+
+test_that("solve_linear returns correctly", {
+  expect_equal(solve_linear(x1 = 0, y1 = 0, x2 = 5, y2 = 5), setNames(1, "m"))
+  expect_equal(solve_linear(x1 = 0, y1 = 0, x2 = 5, m = 1), setNames(5, "y2"))
+  expect_equal(solve_linear(x1 = 0, y1 = 0, y2 = 5, m = 2), setNames(2.5, "x2"))
+  expect_equal(solve_linear(x1 = 0, y1 = 0, x2 = 10, y2 = 5, x3 = 15), 
+               setNames(7.5, "y3"))
+  expect_equal(solve_linear(x1 = 0, y1 = 0, x2 = 10, y2 = 5, y3 = 7.5), 
+               setNames(15, "x3"))
+  expect_equal(solve_linear(x1 = c(0, 0), y1 = c(0, 0), x2 = c(5, 5),
+                            y2 = c(5, 10)),
+               stats::setNames(c(1, 2), c("m", "m")))
+})
+  
+test_that("which_min_gc and which_max_gc return correctly", {
+  expect_equal(which_min_gc(c(5, 6, 7)), which.min(c(5, 6, 7)))
+  expect_equal(which_max_gc(c(5, 6, 7)), which.max(c(5, 6, 7)))
+  expect_equal(which_min_gc(c(5, 6, NA)), which.min(c(5, 6, NA)))
+  expect_equal(which_max_gc(c(5, 6, NA)), which.max(c(5, 6, NA)))
+  expect_equal(which_min_gc(c(TRUE, TRUE, FALSE)), which.min(c(TRUE, TRUE, FALSE)))
+  expect_equal(which_max_gc(c(TRUE, TRUE, FALSE)), which.max(c(TRUE, TRUE, FALSE)))
+  expect_equal(which_min_gc(c(NA, NA)), NA)
+  expect_equal(which_max_gc(c(NA, NA)), NA)
+  expect_equal(which_min_gc(c(NA, NA), empty_NA = FALSE), which.min(c(NA, NA)))
+  expect_equal(which_max_gc(c(NA, NA), empty_NA = FALSE), which.max(c(NA, NA)))
+})
+  

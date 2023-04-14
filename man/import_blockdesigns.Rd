@@ -41,7 +41,8 @@ This function acts as a wrapper to call \code{read_blocks},
 and \code{separate_tidys} in one go
 }
 \details{
-Common arguments that you may want to provide include:
+Common arguments that you may want to provide via \code{...}
+             include:
 
              \code{startrow}, \code{endrow}, \code{startcol}, \code{endcol}, 
              \code{sheet} - specifying the location of design information 
@@ -50,9 +51,16 @@ Common arguments that you may want to provide include:
              \code{wellnames_sep} - specifying what character (or "" for none)
              should be used when pasting together the rownames and
              column names. Note that this should be chosen to match
-             the wellnames in your measures.
+             the well names in your measures.
              
              Note that \code{import_blockdesigns} cannot currently handle
              metadata specified via the \code{metadata} argument of
              \code{read_blocks}
+             
+             If you find yourself needing more control, you can run the 
+             steps manually, first reading with \code{read_blocks},
+             pasting as needed with \code{paste_blocks}, 
+             transforming to tidy with \code{trans_block_to_wide} and
+             \code{trans_wide_to_tidy}, and separating as needed with
+             \code{separate_tidys}.
 }

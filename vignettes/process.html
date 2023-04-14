@@ -356,8 +356,8 @@ derivatives</a>
 <li><a href="#a-simple-derivative" id="toc-a-simple-derivative">A simple
 derivative</a></li>
 <li><a href="#per-capita-derivative" id="toc-per-capita-derivative">Per-capita derivative</a></li>
-<li><a href="#changing-the-derivative-units" id="toc-changing-the-derivative-units">Changing the derivative
-units</a></li>
+<li><a href="#converting-per-capita-growth-rates-into-doubling-times" id="toc-converting-per-capita-growth-rates-into-doubling-times">Converting
+per-capita growth rates into doubling times</a></li>
 </ul></li>
 <li><a href="#whats-next" id="toc-whats-next">What’s next?</a></li>
 </ul>
@@ -385,89 +385,92 @@ with our design information, and pre-processed and plotted our data. Now
 we’re going to do some processing of our raw data: calculating
 derivatives.</p>
 <p>If you haven’t already, load the necessary packages.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gcplyr)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span></code></pre></div>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">#This code was previously explained</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co">#Here we&#39;re re-running it so it&#39;s available for us to work with</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>example_tidydata <span class="ot">&lt;-</span> <span class="fu">trans_wide_to_tidy</span>(example_widedata_noiseless,</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>                                       <span class="at">id_cols =</span> <span class="st">&quot;Time&quot;</span>)</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>example_design <span class="ot">&lt;-</span> <span class="fu">make_design</span>(</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">pattern_split =</span> <span class="st">&quot;,&quot;</span>, <span class="at">nrows =</span> <span class="dv">8</span>, <span class="at">ncols =</span> <span class="dv">12</span>,</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Bacteria_strain&quot;</span> <span class="ot">=</span> <span class="fu">make_designpattern</span>(</span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">paste</span>(<span class="st">&quot;Strain&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>),</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>, <span class="at">pattern =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>, <span class="at">byrow =</span> <span class="cn">TRUE</span>),</span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Bacteria_strain&quot;</span> <span class="ot">=</span> <span class="fu">make_designpattern</span>(</span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">paste</span>(<span class="st">&quot;Strain&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>),</span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">7</span><span class="sc">:</span><span class="dv">12</span>, <span class="at">pattern =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>, <span class="at">byrow =</span> <span class="cn">TRUE</span>),</span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Phage&quot;</span> <span class="ot">=</span> <span class="fu">make_designpattern</span>(</span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;No Phage&quot;</span>), <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>, <span class="at">pattern =</span> <span class="st">&quot;1&quot;</span>),</span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;Phage&quot;</span> <span class="ot">=</span> <span class="fu">make_designpattern</span>(</span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;Phage Added&quot;</span>), <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">7</span><span class="sc">:</span><span class="dv">12</span>, <span class="at">pattern =</span> <span class="st">&quot;1&quot;</span>))</span>
-<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">merge_dfs</span>(example_tidydata, example_design)</span>
-<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Joining, by = &quot;Well&quot;</span></span>
-<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg<span class="sc">$</span>Well <span class="ot">&lt;-</span> </span>
-<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">factor</span>(ex_dat_mrg<span class="sc">$</span>Well,</span>
-<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>         <span class="at">levels =</span> <span class="fu">paste</span>(<span class="fu">rep</span>(LETTERS[<span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>], <span class="at">each =</span> <span class="dv">12</span>), <span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>, <span class="at">sep =</span> <span class="st">&quot;&quot;</span>))</span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(gcplyr)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># This code was previously explained</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co"># Here we&#39;re re-running it so it&#39;s available for us to work with</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>example_tidydata <span class="ot">&lt;-</span> <span class="fu">trans_wide_to_tidy</span>(example_widedata_noiseless,</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>                                       <span class="at">id_cols =</span> <span class="st">&quot;Time&quot;</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>example_design <span class="ot">&lt;-</span> <span class="fu">make_design</span>(</span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>  <span class="at">pattern_split =</span> <span class="st">&quot;,&quot;</span>, <span class="at">nrows =</span> <span class="dv">8</span>, <span class="at">ncols =</span> <span class="dv">12</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>  <span class="st">&quot;Bacteria_strain&quot;</span> <span class="ot">=</span> <span class="fu">make_designpattern</span>(</span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">paste</span>(<span class="st">&quot;Strain&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>),</span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>    <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>, <span class="at">pattern =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>, <span class="at">byrow =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>  <span class="st">&quot;Bacteria_strain&quot;</span> <span class="ot">=</span> <span class="fu">make_designpattern</span>(</span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">paste</span>(<span class="st">&quot;Strain&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>),</span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a>    <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">7</span><span class="sc">:</span><span class="dv">12</span>, <span class="at">pattern =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>, <span class="at">byrow =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a>  <span class="st">&quot;Phage&quot;</span> <span class="ot">=</span> <span class="fu">make_designpattern</span>(</span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;No Phage&quot;</span>), <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>, <span class="at">pattern =</span> <span class="st">&quot;1&quot;</span>),</span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a>  <span class="st">&quot;Phage&quot;</span> <span class="ot">=</span> <span class="fu">make_designpattern</span>(</span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;Phage Added&quot;</span>), <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">7</span><span class="sc">:</span><span class="dv">12</span>, <span class="at">pattern =</span> <span class="st">&quot;1&quot;</span>))</span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">merge_dfs</span>(example_tidydata, example_design)</span>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a><span class="co">#&gt; Joining with `by = join_by(Well)`</span></span>
+<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a>ex_dat_mrg<span class="sc">$</span>Well <span class="ot">&lt;-</span> </span>
+<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a>  <span class="fu">factor</span>(ex_dat_mrg<span class="sc">$</span>Well,</span>
+<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a>         <span class="at">levels =</span> <span class="fu">paste</span>(<span class="fu">rep</span>(LETTERS[<span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>], <span class="at">each =</span> <span class="dv">12</span>), <span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>, <span class="at">sep =</span> <span class="st">&quot;&quot;</span>))</span>
+<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a><span class="co">#Convert time to hours</span></span>
+<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a>ex_dat_mrg<span class="sc">$</span>Time <span class="ot">&lt;-</span> ex_dat_mrg<span class="sc">$</span>Time<span class="sc">/</span><span class="dv">3600</span></span></code></pre></div>
 </div>
 <div id="how-to-process-and-analyze-your-data" class="section level1">
 <h1>How to process and analyze your data</h1>
 <p>With your data and design information pre-processed, <strong>your
 dataset is now organized in a way that’s easy to export and
-analyze</strong>. It is also at this point that the next steps for what
-you can do diversify into many options.</p>
+analyze</strong>.</p>
 <p>Broadly speaking, there are two main approaches to analyzing growth
 curves data:</p>
 <ol style="list-style-type: decimal">
-<li>directly quantify attributes of the growth dynamics</li>
+<li>directly quantify attributes of the growth dynamics - <strong>gcplyr
+facilitates this</strong></li>
 <li>fit the growth dynamics with a mathematical model, then extract
-parameters from the fitted model</li>
+parameters from the fitted model - check out the <strong>Other growth
+curve analysis packages</strong> section in vignette(“conclusion”) if
+you’re interesting in exploring this approach</li>
 </ol>
-<p>The remaining functions of <code>gcplyr</code> can facilitate
-analyses following the first approach: directly quantifying attributes
-of the observed dynamics. If you’re interested in exploring
-model-fitting approaches, which can provide enormous analytical power,
-check out the <strong>Other growth curve analysis packages</strong>
-section in vignette(“conclusion”). At this point, since the data is now
-well-organized, advanced users may also decide they want to write their
-own custom analyses (in lieu of, or alongside, <code>gcplyr</code>-based
-and/or fitting-based analyses).</p>
-<p>So, how do we directly quantify attributes of growth curves? First,
-we may need to calculate derivatives of our data. The density and
-derivative values will be what we analyze to identify features of our
-growth curves. <code>gcplyr</code> has a number of functions that
-facilitate these steps.</p>
-<p>However, unlike the import, transformation, and merging steps we’ve
-done so far, different projects may require different analyses, and not
-all users will have the same analysis steps. The <a href="#CalculatingDerivatives">Calculating Derivatives</a> section of
-this article, and the <a href="vignette(%22analyze%22)">Analyzing
-Data</a> and <a href="vignette(%22noise%22)">Dealing with Noise</a>
-vignettes, therefore, are written to highlight the functions available
-and provide examples of common analyses that you may want to run, rather
-than prescribing a set of analysis steps that everyone must do.</p>
-<p>Before we dig into processing and analyzing our data, we first need
-to familiarize ourselves with the <code>dplyr</code> package and its
+<p>At this point, since the data is now well-organized, advanced users
+may also decide they want to write their own custom analyses (in lieu
+of, or alongside, <code>gcplyr</code>-based and/or fitting-based
+analyses).</p>
+<p>So, how do we directly quantify attributes of growth curves?
+Generally, we find features of the density data and its derivatives.
+Different projects may desire different analyses, so this article and
+the <a href="vignette(%22analyze%22)">Analyzing Data</a> and <a href="vignette(%22noise%22)">Dealing with Noise</a> articles are written
+to highlight common analyses, rather than prescribing what everyone
+should do.</p>
+<p>Below I list common metrics that require derivatives to be
+calculated. If you intend to calculate any of those metrics, or just
+want to calculate or plot the derivatives, continue reading. Otherwise,
+feel free to skip right to the <a href="vignette(%22analyze%22)">Analyzing Data</a> article.</p>
+<p><strong>Metrics requiring derivatives:</strong></p>
+<ul>
+<li>the lag time</li>
+<li>the time to reach some growth rate</li>
+<li>the maximum per-capita growth rate (i.e. minimum doubling time)</li>
+<li>the inflection point</li>
+<li>the density and time when a diauxic shift occurs</li>
+<li>the maximum per-capita growth rate during diauxie</li>
+</ul>
+<p>Before we dig into calculating derivatives, we first need to
+familiarize ourselves with the <code>dplyr</code> package and its
 functions <code>group_by</code> and <code>mutate</code>. Why? Because
 the upcoming <code>gcplyr</code> processing functions are <em>best</em>
 used <strong>within</strong> <code>dplyr::mutate</code>. <strong>If
-you’re already familiar with <code>dplyr</code>, feel free to skip this
-primer.</strong> If you’re not familiar yet, don’t worry! This section
-provides a primer that will teach you all you need to know on using
-<code>group_by</code> and <code>mutate</code> with <code>gcplyr</code>
-functions.</p>
+you’re already familiar with <code>dplyr</code>, feel free to skip
+straight to <a href="#CalculatingDerivatives">Calculating
+Derivatives</a>.</strong> If you’re not familiar yet, the primer will
+teach you all you need to know to use <code>gcplyr</code>.</p>
 <div id="a-brief-primer-on-dplyr" class="section level2">
 <h2>A brief primer on dplyr</h2>
 <p>The <code>R</code> package <code>dplyr</code> provides a “grammar of
 data manipulation” that is useful for a broad array of data analysis
 tasks (in fact, <code>dplyr</code> is the direct inspiration for the
-name of this package!) For our purposes right now, we’re going to focus
-on two particular functions: <code>group_by</code> and
-<code>mutate</code>.</p>
+name of <code>gcplyr</code>!) For our purposes, we’re going to focus on
+two functions: <code>group_by</code> and <code>mutate</code>.</p>
 <p>The <code>mutate</code> function in <code>dplyr</code> allows users
 to easily create new columns in their <code>data.frame</code>’s. For us,
-we’re going to use <code>mutate</code> to create columns with our data
-and the derivatives we calculate. However, we want to make sure that
+we’re going to use <code>mutate</code> to create columns with the
+derivatives we calculate. However, we want to make sure that
 derivative-calculating is done on <em>each</em> unique well
 independently. In order to do that, we’re first going to use the
 <code>group_by</code> function, which allows users to group the rows of
@@ -477,10 +480,9 @@ will then treat independently.</p>
 <ol style="list-style-type: decimal">
 <li><code>group_by</code> our data so that every unique well is a
 group</li>
-<li><code>mutate</code> to create new columns with our data and
-calculated derivatives</li>
+<li><code>mutate</code> to create new columns with our calculated
+derivatives</li>
 </ol>
-<p>Let’s walk through a simple example</p>
 <p>For <code>group_by</code>, we need to specify the
 <code>data.frame</code> to be grouped, and then we want to list all the
 columns needed to identify each unique well in our dataset. Typically,
@@ -488,217 +490,129 @@ this includes all of our design columns along with the plate name and
 well name. Make sure you’re <em>not</em> grouping by Time, Absorbance,
 or anything else that varies <em>within</em> a well, since if you do
 <code>dplyr</code> will group timepoints within a well separately.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">group_by</span>(ex_dat_mrg, Well, Bacteria_strain, Phage)</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(ex_dat_mrg)</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 6 × 5</span></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # Groups:   Well, Bacteria_strain, Phage [6]</span></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    Time Well  Measurements Bacteria_strain Phage   </span></span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;dbl&gt; &lt;fct&gt;        &lt;dbl&gt; &lt;chr&gt;           &lt;chr&gt;   </span></span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1     0 A1           0.002 Strain 1        No Phage</span></span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2     0 B1           0.002 Strain 7        No Phage</span></span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3     0 C1           0.002 Strain 13       No Phage</span></span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4     0 D1           0.002 Strain 19       No Phage</span></span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5     0 E1           0.002 Strain 25       No Phage</span></span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6     0 F1           0.002 Strain 31       No Phage</span></span></code></pre></div>
-<p>Notice that this hasn’t changed anything about our
-<code>data.frame</code>, but <code>R</code> now knows what the groups
-are. Now any calculations will be carried out on each unique well
-independently.</p>
 <p>To use <code>mutate</code>, we simply have to specify:</p>
 <ol style="list-style-type: decimal">
 <li>the name of the variable we want results saved to</li>
 <li>the function that calculates the new column</li>
 </ol>
-<p>Note that the function has to return a vector that is as long as the
-number of data points in the group.</p>
-<p>For a simple example, in the code below we’ve simply added one to the
-<code>Measurements</code> values and saved it in a column named
-<code>Measurements_plus1</code>:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(ex_dat_mrg,</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">Measurements_plus1 =</span> Measurements<span class="sc">+</span><span class="dv">1</span>)</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(ex_dat_mrg)</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 6 × 6</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # Groups:   Well, Bacteria_strain, Phage [6]</span></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    Time Well  Measurements Bacteria_strain Phage    Measurements_plus1</span></span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;dbl&gt; &lt;fct&gt;        &lt;dbl&gt; &lt;chr&gt;           &lt;chr&gt;                 &lt;dbl&gt;</span></span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1     0 A1           0.002 Strain 1        No Phage               1.00</span></span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2     0 B1           0.002 Strain 7        No Phage               1.00</span></span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3     0 C1           0.002 Strain 13       No Phage               1.00</span></span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4     0 D1           0.002 Strain 19       No Phage               1.00</span></span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5     0 E1           0.002 Strain 25       No Phage               1.00</span></span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6     0 F1           0.002 Strain 31       No Phage               1.00</span></span></code></pre></div>
 <p>If you want additional columns, you simply add them to the
-<code>mutate</code>. For instance, if we also want a column with the
-<code>Measurements</code> plus two, we just add that as a second
-argument:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(ex_dat_mrg,</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">Measurements_plus1 =</span> Measurements<span class="sc">+</span><span class="dv">1</span>,</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>         <span class="at">Measurements_plus2 =</span> Measurements<span class="sc">+</span><span class="dv">2</span>)</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(ex_dat_mrg)</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 6 × 7</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # Groups:   Well, Bacteria_strain, Phage [6]</span></span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    Time Well  Measurements Bacteria_strain Phage    Measurements_plus1 Measure…¹</span></span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;dbl&gt; &lt;fct&gt;        &lt;dbl&gt; &lt;chr&gt;           &lt;chr&gt;                 &lt;dbl&gt;     &lt;dbl&gt;</span></span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1     0 A1           0.002 Strain 1        No Phage               1.00      2.00</span></span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2     0 B1           0.002 Strain 7        No Phage               1.00      2.00</span></span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3     0 C1           0.002 Strain 13       No Phage               1.00      2.00</span></span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4     0 D1           0.002 Strain 19       No Phage               1.00      2.00</span></span>
-<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5     0 E1           0.002 Strain 25       No Phage               1.00      2.00</span></span>
-<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6     0 F1           0.002 Strain 31       No Phage               1.00      2.00</span></span>
-<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # … with abbreviated variable name ¹​Measurements_plus2</span></span></code></pre></div>
-<p>This is a rather simple example, but in the next sections I show how
-we can use <code>mutate</code> with <code>calc_deriv</code> to create
-new columns containing derivatives. If you want to learn more,
-<code>dplyr</code> has extensive documentation and examples of its own
-online. Feel free to explore them as desired, but this primer should be
-sufficient to use the <code>gcplyr</code> processing functions, which
-(as a reminder) are best used <em>within</em> <code>mutate</code>.</p>
+<code>mutate</code>.</p>
+<p>As you’ll see throughout the rest of this article, we’ll be using
+<code>group_by</code> and <code>mutate</code> to calculate derivatives.
+If you want to learn more, <code>dplyr</code> has extensive
+documentation and examples of its own online, but this primer and the
+coming examples should be sufficient to calculate derivatives with
+<code>gcplyr</code>.</p>
 </div>
 </div>
 <div id="CalculatingDerivatives" class="section level1">
 <h1>Processing data: calculating derivatives</h1>
-<p>In many cases, identifying features of a growth curve requires
-looking not only at the absorbance data over time, but the slope of the
-absorbance data over time. <code>gcplyr</code> includes a
-<code>calc_deriv</code> function that can be used to calculate the
-empirical derivative (slope) of absorbance data over time.</p>
+<p>There are two derivatives we are primarily interested in
+calculating:</p>
+<ul>
+<li>the plain derivative - the slope of the original density data</li>
+<li>the per-capita derivative - the growth rate of the cells</li>
+</ul>
+<p><code>gcplyr</code> includes a <code>calc_deriv</code> to calculate
+both of these.</p>
 <div id="a-simple-derivative" class="section level2">
 <h2>A simple derivative</h2>
 <p>To calculate a simple derivative (the slope of our original data)
 using <code>calc_deriv</code>, we simply have to provide the x and y
 values. Note that this is <strong>not</strong> the growth rate of the
 cells, but rather is a measure of how quickly the whole population was
-growing at each time point. This is useful for identifying events like
-population declines, or multiple rounds of growth.</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">mutate</span>(ex_dat_mrg,</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>                     <span class="at">deriv =</span> <span class="fu">calc_deriv</span>(<span class="at">x =</span> Time, <span class="at">y =</span> Measurements))</span></code></pre></div>
+growing at each time point.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">mutate</span>(<span class="fu">group_by</span>(ex_dat_mrg, Well, Bacteria_strain, Phage),</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>                     <span class="at">deriv =</span> <span class="fu">calc_deriv</span>(<span class="at">x =</span> Time, <span class="at">y =</span> Measurements))</span></code></pre></div>
 <p>To visualize these results, let’s look at a few wells that are
 representative of the overall diversity of dynamics in our example data.
 (In your own code, you should visualize all your data).</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>sample_wells <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;A1&quot;</span>, <span class="st">&quot;F1&quot;</span>, <span class="st">&quot;F10&quot;</span>, <span class="st">&quot;E11&quot;</span>)</span></code></pre></div>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Now let&#39;s plot the derivative</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(ex_dat_mrg, Well <span class="sc">%in%</span> sample_wells),</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> Time, <span class="at">y =</span> deriv)) <span class="sc">+</span></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span></span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>Well, <span class="at">scales =</span> <span class="st">&quot;free&quot;</span>)</span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Warning: Removed 1 row containing missing values (`geom_line()`).</span></span></code></pre></div>
-<p><img src="data:image/png;base64,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" /><!-- --></p>
-<p>The first thing you might notice is that some of these lines aren’t
-as smooth as you might expect. Why is that? This noise in the
-derivatives is actually being created by the limited resolution of the
-plate reader. Since plate readers can commonly only read to a resolution
-of 0.001, this means that values jump by at least 0.001 at each step,
-even if the true difference should be smaller.</p>
-<p>That aside, from the plots above we can clearly see when the upward
-slope of the total population was the steepest, and also when the
-populations have declined in wells with phages. In Well E11 we can even
-see when the bacteria grow again later after phage-driven declines. But
-these derivatives also make something more apparent that might not have
-been obvious visually in the raw density data: if we look in Well A1 we
-can see that there is a second peak of growth. It’s not as steep (the
-derivative is not as high), but it’s there. Such a pattern is common in
-bacterial growth curves and is called <em>diauxic growth</em>.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>sample_wells <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;A1&quot;</span>, <span class="st">&quot;F1&quot;</span>, <span class="st">&quot;F10&quot;</span>, <span class="st">&quot;E11&quot;</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="co"># Now let&#39;s plot the derivative</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(ex_dat_mrg, Well <span class="sc">%in%</span> sample_wells),</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> Time, <span class="at">y =</span> deriv)) <span class="sc">+</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>Well, <span class="at">scales =</span> <span class="st">&quot;free&quot;</span>)</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="co">#&gt; Warning: Removed 1 row containing missing values (`geom_line()`).</span></span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>You might notice that these lines aren’t super smooth. Why? The plate
+reader data has a limited resolution, only to the nearest 0.001, causing
+the derivative to “jump” when the reading increases.</p>
 </div>
 <div id="per-capita-derivative" class="section level2">
 <h2>Per-capita derivative</h2>
-<p>If we want to calculate the growth rate of the cells, we need to use
-<code>calc_deriv</code> to return the <strong>per-capita</strong>
-derivative. Just as before, provide the x and y values, but now set
-<code>percapita = TRUE</code>. Note that in this case, you are required
-to specify a blank value, i.e. the value of your
-<code>Measurements</code> that corresponds to a population density of 0.
-If your data have already been normalized, simply add
-<code>blank = 0</code>.</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">mutate</span>(ex_dat_mrg,</span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>                     <span class="at">deriv_percap =</span> <span class="fu">calc_deriv</span>(<span class="at">x =</span> Time, <span class="at">y =</span> Measurements,</span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">percapita =</span> <span class="cn">TRUE</span>, <span class="at">blank =</span> <span class="dv">0</span>))</span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="co">#Now let&#39;s plot the per-capita derivative</span></span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(ex_dat_mrg, Well <span class="sc">%in%</span> sample_wells),</span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> Time, <span class="at">y =</span> deriv_percap)) <span class="sc">+</span></span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span></span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>Well, <span class="at">scales =</span> <span class="st">&quot;free&quot;</span>)</span>
-<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Warning: Removed 1 row containing missing values (`geom_line()`).</span></span></code></pre></div>
-<p><img src="data:image/png;base64,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" /><!-- --></p>
-<p>Hmm, what’s going on here? Well, when bacterial densities are very
-close to 0, the per-capita growth rate can be very noisy. Luckily,
-<code>calc_deriv</code> includes a method that can reduce some of the
-effects of this noise. Instead of calculating the derivative of each
-point relative to the next, we can use a moving window of more than two
-points and fit a linear regression to this data. This can help reduce
-the effect of low densities.</p>
-<p>To use the fitting functionality of <code>calc_deriv</code>, we need
-to specify either the <code>window_width</code> parameter, or the
-<code>window_width_n</code> parameter. <code>window_width</code>
-specifies how wide the window used to include points for the fitting is
-in units of <code>x</code>, while <code>window_width_n</code> specifies
-it in number of data points. Here, we’ll demonstrate it’s use by fitting
-regressions that include five data points.</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">mutate</span>(ex_dat_mrg,</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>                     <span class="at">deriv_percap5 =</span> <span class="fu">calc_deriv</span>(<span class="at">x =</span> Time, <span class="at">y =</span> Measurements, </span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">percapita =</span> <span class="cn">TRUE</span>, <span class="at">blank =</span> <span class="dv">0</span>,</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">window_width_n =</span> <span class="dv">5</span>))</span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="co">#Now let&#39;s plot the derivative</span></span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(ex_dat_mrg, Well <span class="sc">%in%</span> sample_wells),</span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> Time, <span class="at">y =</span> deriv_percap5)) <span class="sc">+</span></span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span></span>
-<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>Well, <span class="at">scales =</span> <span class="st">&quot;free&quot;</span>)</span>
-<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Warning: Removed 4 rows containing missing values (`geom_line()`).</span></span></code></pre></div>
-<p><img src="data:image/png;base64,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" /><!-- --></p>
-<p>Great! That reduced the effects of low densities greatly! When doing
-fitting to calculate the per-capita growth rate, we can alternatively do
-that fitting with log-transformed y-values. Because exponential growth
-is linear when y-values are log-transformed, this typically gives us a
-better estimate of the per-capita growth rate, although it can fail when
-y-values are at or below 0. Check out the documentation for
-<code>calc_deriv</code> for more details.</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">mutate</span>(ex_dat_mrg,</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>                     <span class="at">deriv_percap5 =</span> <span class="fu">calc_deriv</span>(<span class="at">x =</span> Time, <span class="at">y =</span> Measurements, </span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">percapita =</span> <span class="cn">TRUE</span>, <span class="at">blank =</span> <span class="dv">0</span>,</span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">window_width_n =</span> <span class="dv">5</span>, <span class="at">trans_y =</span> <span class="st">&quot;log&quot;</span>))</span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="co">#Now let&#39;s plot the derivative</span></span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(ex_dat_mrg, Well <span class="sc">%in%</span> sample_wells),</span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> Time, <span class="at">y =</span> deriv_percap5)) <span class="sc">+</span></span>
-<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span></span>
-<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>Well, <span class="at">scales =</span> <span class="st">&quot;free&quot;</span>)</span>
-<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Warning: Removed 4 rows containing missing values (`geom_line()`).</span></span></code></pre></div>
-<p><img src="data:image/png;base64,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" /><!-- --></p>
-<p>Great! Taking a look at our per-capita growth rates, we can see that
-all the bacteria had a lag period of no growth at the beginning before
-starting to grow and having an early peak in their growth rates.</p>
+<p>To calculate the per-capita derivative, we simply modify our use of
+<code>calc_deriv</code> with the argument <code>percapita = TRUE</code>.
+Note that in this case, you are required to specify a blank value,
+i.e. the value of your <code>Measurements</code> that corresponds to a
+population density of 0. If your data have already been normalized,
+simply add <code>blank = 0</code>.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">mutate</span>(<span class="fu">group_by</span>(ex_dat_mrg, Well, Bacteria_strain, Phage),</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>                     <span class="at">deriv_percap =</span> <span class="fu">calc_deriv</span>(<span class="at">x =</span> Time, <span class="at">y =</span> Measurements,</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>                                        <span class="at">percapita =</span> <span class="cn">TRUE</span>, <span class="at">blank =</span> <span class="dv">0</span>))</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co"># Now let&#39;s plot the per-capita derivative</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(ex_dat_mrg, Well <span class="sc">%in%</span> sample_wells),</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> Time, <span class="at">y =</span> deriv_percap)) <span class="sc">+</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>Well, <span class="at">scales =</span> <span class="st">&quot;free&quot;</span>)</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="co">#&gt; Warning: Removed 1 row containing missing values (`geom_line()`).</span></span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>These derivatives are very jumpy. Why? The same limited resolution of
+the plate reader has an amplified effect on the per-capita derivative
+when densities are very close to 0. Luckily, <code>calc_deriv</code> can
+calculate derives by fitting a linear regression to multiple points,
+reducing this jumpiness in the derivative.</p>
+<p>To use this fitting functionality of <code>calc_deriv</code>, specify
+either the <code>window_width</code> or <code>window_width_n</code>
+parameter. <code>window_width</code> specifies how wide the window used
+to include points for the fitting is in units of <code>x</code>, while
+<code>window_width_n</code> specifies it in number of data points. Here,
+we’ll demonstrate with five data points.</p>
+<p>For best practice, I recommend doing this fitting on log-transformed
+<code>y</code> values, since exponentially growing density values are
+linear when log-transformed. You can achieve this simply by setting
+<code>trans_y = &#39;log&#39;</code>. With log-transformation, note that
+<code>calc_deriv</code> will return <code>NA</code> for any data points
+where the reading is equal to or below your <code>blank</code>
+value.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">mutate</span>(<span class="fu">group_by</span>(ex_dat_mrg, Well, Bacteria_strain, Phage),</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>                     <span class="at">deriv_percap5 =</span> <span class="fu">calc_deriv</span>(<span class="at">x =</span> Time, <span class="at">y =</span> Measurements, </span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>                                        <span class="at">percapita =</span> <span class="cn">TRUE</span>, <span class="at">blank =</span> <span class="dv">0</span>,</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>                                        <span class="at">window_width_n =</span> <span class="dv">5</span>, <span class="at">trans_y =</span> <span class="st">&quot;log&quot;</span>))</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co"># Now let&#39;s plot the derivative</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(ex_dat_mrg, Well <span class="sc">%in%</span> sample_wells),</span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> Time, <span class="at">y =</span> deriv_percap5)) <span class="sc">+</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>Well, <span class="at">scales =</span> <span class="st">&quot;free&quot;</span>)</span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="co">#&gt; Warning: Removed 4 rows containing missing values (`geom_line()`).</span></span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>Great! The jumpiness has been reduced immensely.</p>
 </div>
-<div id="changing-the-derivative-units" class="section level2">
-<h2>Changing the derivative units</h2>
-<p>To convert your x-axis (time) units in your derivative calculations
-to a different unit, use the <code>x_scale</code> argument. Simply
-specify the ratio of your x units to the desired units. For instance, in
-our example data <code>x</code> is the number of <em>seconds</em> since
-the growth curve began. What if we wanted growth rate in
-<em>per-hour</em>? There are 3600 seconds in an hour, so we set
-<code>x_scale = 3600</code></p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> </span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(ex_dat_mrg,</span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">deriv_percap_hr =</span> <span class="fu">calc_deriv</span>(<span class="at">x =</span> Time, <span class="at">y =</span> Measurements,</span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">percapita =</span> <span class="cn">TRUE</span>, <span class="at">blank =</span> <span class="dv">0</span>,</span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">window_width_n =</span> <span class="dv">5</span>, <span class="at">trans_y =</span> <span class="st">&quot;log&quot;</span>,</span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">x_scale =</span> <span class="dv">3600</span>))</span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="co">#Now let&#39;s plot the derivative in units of Abs/hour</span></span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(ex_dat_mrg, Well <span class="sc">%in%</span> sample_wells),</span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> Time, <span class="at">y =</span> deriv_percap_hr)) <span class="sc">+</span></span>
-<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span></span>
-<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>Well, <span class="at">scales =</span> <span class="st">&quot;free&quot;</span>)</span>
-<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Warning: Removed 4 rows containing missing values (`geom_line()`).</span></span></code></pre></div>
-<p><img src="data:image/png;base64,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" /><!-- --></p>
-<p>Now we can see the bacterial growth rate in more-understandable
-units: peak growth rates are often around 1-2 divisions/hour.</p>
+<div id="converting-per-capita-growth-rates-into-doubling-times" class="section level2">
+<h2>Converting per-capita growth rates into doubling times</h2>
+<p>If you’d rather express your per-capita growth rates as a doubling
+time, simply use the <code>doubling_time</code> function to convert your
+per-capita growth rates into equivalent doubling times.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">mutate</span>(<span class="fu">group_by</span>(ex_dat_mrg, Well, Bacteria_strain, Phage),</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>                     <span class="at">deriv_percap5 =</span> <span class="fu">calc_deriv</span>(<span class="at">x =</span> Time, <span class="at">y =</span> Measurements, </span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>                                        <span class="at">percapita =</span> <span class="cn">TRUE</span>, <span class="at">blank =</span> <span class="dv">0</span>,</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>                                        <span class="at">window_width_n =</span> <span class="dv">5</span>, <span class="at">trans_y =</span> <span class="st">&quot;log&quot;</span>),</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>                     <span class="at">doub_time =</span> <span class="fu">doubling_time</span>(<span class="at">y =</span> deriv_percap5))</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="fu">head</span>(ex_dat_mrg)</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co">#&gt; # A tibble: 6 × 9</span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co">#&gt; # Groups:   Well, Bacteria_strain, Phage [4]</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co">#&gt;    Time Well  Measurements Bacteria_strain Phage   deriv deriv…¹ deriv…² doub_…³</span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="co">#&gt;   &lt;dbl&gt; &lt;fct&gt;        &lt;dbl&gt; &lt;chr&gt;           &lt;chr&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;</span></span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co">#&gt; 1  0    A1           0.002 Strain 1        No Pha…     0       0      NA      NA</span></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="co">#&gt; 2  0    F1           0.002 Strain 31       No Pha…     0       0      NA      NA</span></span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a><span class="co">#&gt; 3  0    F10          0.002 Strain 34       Phage …     0       0      NA      NA</span></span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="co">#&gt; 4  0    E11          0.002 Strain 29       Phage …     0       0      NA      NA</span></span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a><span class="co">#&gt; 5  0.25 A1           0.002 Strain 1        No Pha…     0       0      NA      NA</span></span>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a><span class="co">#&gt; 6  0.25 F1           0.002 Strain 31       No Pha…     0       0      NA      NA</span></span>
+<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a><span class="co">#&gt; # … with abbreviated variable names ¹​deriv_percap, ²​deriv_percap5, ³​doub_time</span></span></code></pre></div>
 </div>
 </div>
 <div id="whats-next" class="section level1">

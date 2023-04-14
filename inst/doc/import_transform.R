@@ -18,9 +18,9 @@ print_df <- function(df, col.names = FALSE) {
 }
 
 ## -----------------------------------------------------------------------------
-#This code just creates a series of block-shaped example files
-#Don't worry about how it works - when working with real growth
-#curves data, all these files would be created by the plate reader
+# This code just creates a series of block-shaped example files
+# Don't worry about how it works - when working with real growth
+# curves data, all these files would be created by the plate reader
 temp_filenames <- 
   paste("Plate1-", 
         paste(example_widedata_noiseless$Time %/% 3600,
@@ -52,24 +52,24 @@ for (i in 1:length(temp_filenames)) {
 }
 
 ## -----------------------------------------------------------------------------
-#Here we print all the files we're going to read
+# Here we print all the files we're going to read
 list.files(pattern = "Plate1.*csv")
 
-#Here we save them to the temp_filenames variable
+# Here we save them to the temp_filenames variable
 temp_filenames <- list.files(pattern = "Plate1.*csv")
 
 ## -----------------------------------------------------------------------------
 print_df(read.csv(temp_filenames[1], header = FALSE, colClasses = "character"))
 
 ## -----------------------------------------------------------------------------
-#Now let's read it with import_blockmeasures
+# Now let's read it with import_blockmeasures
 imported_blockdata <- import_blockmeasures(
   files = temp_filenames, startrow = 4)
 
 head(imported_blockdata, c(6, 8))
 
 ## -----------------------------------------------------------------------------
-#We can specify rows or columns by Excel-style letters too
+# We can specify rows or columns by Excel-style letters too
 imported_blockdata <- import_blockmeasures(
   files = temp_filenames,
   startrow = 4, startcol = "A")
@@ -78,7 +78,7 @@ imported_blockdata <- import_blockmeasures(
 print_df(read.csv(temp_filenames[1], header = FALSE, colClasses = "character"))
 
 ## -----------------------------------------------------------------------------
-#Reading the blockcurves files with metadata included
+# Reading the blockcurves files with metadata included
 imported_blockdata <- import_blockmeasures(
   files = temp_filenames,
   startrow = 4,
@@ -87,16 +87,16 @@ imported_blockdata <- import_blockmeasures(
 head(imported_blockdata, c(6, 8))
 
 ## -----------------------------------------------------------------------------
-#Reading the blockcurves files with metadata included
+# Reading the blockcurves files with metadata included
 imported_blockdata <- import_blockmeasures(
   files = temp_filenames,
   startrow = 4,
   metadata = list("time" = c(2, "C")))
 
 ## -----------------------------------------------------------------------------
-#This code just creates an example file with multiple blocks
-#Don't worry about how it works - when working with real growth
-#curves data, this would be created by the plate reader
+# This code just creates an example file with multiple blocks
+# Don't worry about how it works - when working with real growth
+# curves data, this would be created by the plate reader
 write_blocks(read_blocks(files = temp_filenames,
                          startrow = 4,
                          metadata = list("time" = c(2, "C"))),
@@ -131,10 +131,10 @@ imported_blockdata <- import_blockmeasures(
 head(imported_blockdata, c(6, 8))
 
 ## -----------------------------------------------------------------------------
-#This code just creates a wide-shaped example file where the data doesn't
-#start on the first row.
-#Don't worry about how it works - when working with real growth
-#curves data, this file would be created by the plate reader
+# This code just creates a wide-shaped example file where the data doesn't
+# start on the first row.
+# Don't worry about how it works - when working with real growth
+# curves data, this file would be created by the plate reader
 temp_example_widedata <- example_widedata_noiseless
 colnames(temp_example_widedata) <- paste("V", 1:ncol(temp_example_widedata),
                                          sep = "")
@@ -152,7 +152,7 @@ write.table(modified_example_widedata, file = "widedata2.csv",
           row.names = FALSE, col.names = FALSE, sep = ",")
 
 ## -----------------------------------------------------------------------------
-#Let's take a peek at what this file looks like
+# Let's take a peek at what this file looks like
 print_df(head(read.csv("widedata.csv", header = FALSE, 
                        colClasses = "character"), 
               c(10, 10)))
@@ -168,7 +168,7 @@ imported_widedata <- read_wides(files = "widedata.csv",
                                 startrow = 5, startcol = "A")
 
 ## -----------------------------------------------------------------------------
-#If we had multiple wide-shaped data files to import
+# If we had multiple wide-shaped data files to import
 imported_widedata <- read_wides(files = c("widedata.csv", "widedata2.csv"))
 
 ## -----------------------------------------------------------------------------

@@ -1,494 +1,3 @@
-# Startup ----
-.onAttach <- function(...) {
-  ver <- utils::packageDescription("gcplyr")$Version
-  build_date <- utils::packageDescription("gcplyr")$Date
-  year <- sub("-.*", "", utils::packageDescription("gcplyr")$Date)
-  
-  packageStartupMessage(
-    paste(
-      "## \n",
-      "## gcplyr (Version ", ver, ", Build Date: ", build_date, ")\n",
-      "## See http://github.com/mikeblazanin/gcplyr for additional documentation\n",
-      "## Please cite software as:\n",
-      "##   Blazanin, Michael. ", year, ". 'gcplyr: manipulate and analyze growth\n",
-      "##   curve data.' R package version ", ver, "\n",
-      "## \n",
-      sep = ""))
-}
-
-# Utility functions ----
-
-#' Check dimension of inputs
-#' 
-#' Check if values are a vector of given length, if not coerce to be so
-#' Returns error messages using appropriate names
-#' 
-#' @param input Values to be used
-#' @param input_name Name of the input used for error messages
-#' @param needed_len Desired length of output vector
-#' @param needed_name What the desired length corresponds to (e.g. number of files)
-#' @return The values of \code{input} coerced to a vector of length \code{needed_len}
-#' 
-#' @noRd
-checkdim_inputs <- function(input, input_name, needed_len,
-                            needed_name = "the number of files") {
-  if (length(input) != needed_len) {
-    if(length(input) != 1) {
-      stop(paste("More than one", input_name, "value is supplied, but the number
-                   of", input_name, "values is not equal to", needed_name))
-    } else {
-      return(rep(input, needed_len))
-    }
-  } else {
-    return(input)
-  }
-}
-
-#' Uninterleave list
-#' 
-#' Takes a list that is actually interleaved elements from multiple sources
-#' and uninterleaves them into the separate sources
-#' For instance, a list of blockmeasures that actually corresponds to two
-#' different plates can be split into two lists, each of the blockmeasures
-#' corresponding to a single plate
-#' 
-#' @param interleaved_list A list of R objects
-#' @param n How many output sub lists there should be (i.e. how many groups
-#'          the interleaved list should be divided into)
-#' @return A list of lists of R objects
-#' 
-#' @export
-uninterleave <- function(interleaved_list, n) {
-  #Input checking
-  if ((length(interleaved_list) %% n) != 0) {
-    stop("Length of list must be divisible by n")
-  }
-  
-  output <- rep(list(NA), n)
-  for (i in 1:n) {
-    output[[i]] <- interleaved_list[seq(from = i, to = length(interleaved_list), 
-                                        by = n)]
-  }
-  
-  return(output)
-}
-
-#' A function that converts numbers into base-26 Excel-style letters
-#' 
-#' @param x A vector of numbers in base-10
-#' 
-#' @return A vector of letters in Excel-style base-26 format
-#' 
-#' @export
-to_excel <- function(x) {
-  x_numeric <- suppressWarnings(as.numeric(x))
-  if(any(is.na(x_numeric))) {
-  stop(paste("Failed to convert to Excel-format:",
-       paste(x[is.na(x_numeric)], collapse = ",")))
-  } else {x <- x_numeric}
-  
-  divisor_modulo_excel <- function(x) {
-    #This function is just a way to return %/% and %% modified as Excel uses them
-    #see Python inspiration: https://stackoverflow.com/questions/48983939/convert-a-number-to-excel-s-base-26
-    div <- x %/% 26
-    rem <- x %% 26
-    if (rem == 0) {return(c(div-1, rem + 26))
-    } else {return(c(div, rem))}
-  }
-  
-  #Carry out conversion to Excel letters
-  out <- c()
-  for (i in 1:length(x)) {
-    val <- x[i]
-    chars <- c()
-    while(val > 0) {
-      temp <- divisor_modulo_excel(val)
-      val <- temp[1]
-      rem <- temp[2]
-      chars <- c(LETTERS[rem], chars)
-    }
-    out <- c(out, paste(chars, collapse = ""))
-  }
-  return(out)
-}
-
-#' A function that converts base-26 Excel-style letters to numbers
-#' 
-#' @param x A vector of numbers in Excel-style base-26 letter format
-#' 
-#' @return A vector of numbers in base-10
-#' 
-#' @export
-from_excel <- function(x) {
-  #Based on: https://stackoverflow.com/questions/48983939/convert-a-number-to-excel-s-base-26
-  out <- rep(NA, length(x))
-  x_splt <- strsplit(x, "")
-  for (i in 1:length(x_splt)) {
-    #Get indices of letters
-    temp <- match(x_splt[[i]], LETTERS)
-    #Multiply indices by powers of 26
-    out[i] <- sum(temp*26**((length(temp)-1):0))
-  }
-  if(any(is.na(out))) {
-    stop(paste("Failed to convert from Excel-format:",
-               paste(x[is.na(out)], collapse = ",")))
-  }
-  return(as.numeric(out))
-}
-
-#' A function that parses dots arguments and only passes the correct ones
-#' 
-#' Use this in cases where a parent function calls multiple sub-functions
-#' and passes the ... dots argument to each, but some arguments users
-#' specify in the ... dots argument only work for some of the sub-functions.
-#' In this case, dots_parser will check and run \code{FUN} with only
-#' the arguments that \code{FUN} accepts
-#' 
-#' @param FUN The function to be called
-#' @param ... Additional arguments, some of which may not be arguments
-#'            for \code{FUN}
-#' 
-#' @return The output of \code{FUN} operating on arguments in \code{...}
-#' 
-#' @noRd
-dots_parser <- function(FUN, ...) {
-  argnames <- names(formals(FUN))
-  dots <- list(...)
-  return(do.call(FUN, dots[names(dots) %in% argnames]))
-}
-
-#' A function that infers whether blocks have nested metadata
-#' 
-#' @param blocks The list of blocks
-#' 
-#' @return TRUE or FALSE whether the blocks contain metadata
-#'         (also passes warning when inferring, or error when unable to)
-#' 
-#' @noRd
-infer_block_metadata <- function(blocks) {
-  #Infer nestedness if nested_metadata is set to NULL
-  if (all(sapply(blocks, simplify = TRUE, FUN = class) == "data.frame")) {
-    message("Inferring nested_metadata to be FALSE\n")
-    return(FALSE)
-  } else if (all(sapply(blocks, simplify = TRUE, FUN = class) == "list")) {
-    message("Inferring nested_metadata to be TRUE\n")
-    return(TRUE)
-  } else {
-    stop("Unable to infer nested_metadata, this may be because blocks vary in nestedness or are not data.frame's")
-  }
-}
-
-#' A function that finds a character not present in block data nor metadata
-#' 
-#' Typically this is used to find a separator that can be used without
-#' accidentally implying separations in the data that shouldn't be there
-#' 
-#' @param blocks The list of blocks
-#' @param nested_metadata A Boolean for if there is nested metadata in
-#'                        \code{blocks}. Will attempt to infer if left NULL
-#' 
-#' @return vector of characters not found in the blocks that can be used
-#'         as a separator without issue (or error if none can be found)
-#' 
-#' @noRd
-sep_finder <- function(blocks, nested_metadata = NULL) {
-  if (is.null(nested_metadata)) {
-    nested_metadata <- infer_block_metadata(blocks)
-  }
-  
-  #Look for a character that is not present
-  # in the data/metadata and so can be used as a separator
-  sep <- c("_", " ", "-", ",", ";")
-  if(nested_metadata == TRUE) {
-    not_in_blocks <-
-      sapply(X = sep,
-             FUN = function(y) {
-               !any(grepl(pattern = y, fixed = TRUE,
-                          x = unlist(
-                            lapply(X = blocks,
-                                   FUN = function(x) {
-                                     c(unlist(x[1]), unlist(x[2]))
-                                   }))))
-             })
-  } else if (nested_metadata == FALSE) {
-    not_in_blocks <-
-      sapply(X = sep,
-             FUN = function(y) {
-               !any(grepl(pattern = y, fixed = TRUE,
-                          x = unlist(
-                            lapply(X = blocks,FUN = function(x) {unlist(x[1])}))))
-             })
-  }
-  
-  if(!any(not_in_blocks)) {
-    stop("all of '_', ' ', '-', ',', and ';' are found in the files,
-              specify a sep not found in the files")
-  } else {return(sep[which(not_in_blocks)])}
-}
-
-#' A better version of is.numeric
-#' 
-#' This function works like is.numeric but also checks if x can be coerced to 
-#' numeric without warnings. If is.numeric or can be coerced to numeric, 
-#' returns TRUE. Otherwise, returns
-#' 
-#' @param x Vector to check
-#' @return TRUE if \code{x} is numeric or can be converted to numeric without
-#'         warnings. Otherwise, FALSE
-#' 
-#' @noRd
-canbe.numeric <- function(x) {
-  if(is.numeric(x) | 
-     tryCatch(
-       {
-         as.numeric(x)
-         #This only gets executed if the line above doesn't warn or error
-         TRUE 
-       }, 
-       warning = function(w) {FALSE},
-       error = function(e) {stop(e)}
-     )) {
-      return(TRUE) 
-  } else {
-      return(FALSE)
-  }
-}
-
-#' A function that removes na's values from a vector or pair of vectors
-#' 
-#' Any values of x and y will be removed for indices where x or y are NA
-#' 
-#' @param x,y Vectors to remove NA's from. At least one must be non-NULL
-#' @param na.rm Boolean, should NA's be removed
-#' @param stopifNA Boolean, should an error be passed if na.rm = FALSE
-#'                 and there are NA's in x or y?
-#' @return A list containing: x with NA's removed
-#' 
-#'                            y with NA's removed
-#'                          
-#'                            vector of indices where NA's were removed
-#'                            (NULL when none were removed)
-#' 
-#' @noRd
-rm_nas <- function(x = NULL, y = NULL, na.rm, stopifNA = FALSE) {
-  if(is.null(x) & is.null(y)) {}
-  
-  out <- list("x" = x, "y" = y, "nas_indices_removed" = NULL)
-  
-  if(na.rm == TRUE) {
-    if(is.null(x) & is.null(y)) {
-      stop("both x and y are NULL for NA's removal")
-    } else if (is.null(x) & !is.null(y)) {
-      #Remove from only y
-      if(any(is.na(y))) {
-        out[["nas_indices_removed"]] <- which(is.na(y))
-        out[["y"]] <- y[-out[["nas_indices_removed"]]]
-      }
-    } else if (!is.null(x) & is.null(y)) {
-      #Remove from only x
-      if(any(is.na(x))) {
-        out[["nas_indices_removed"]] <- which(is.na(x))
-        out[["x"]] <- x[-out[["nas_indices_removed"]]]
-      }
-    } else if (!is.null(x) & !is.null(y)) {
-      #Remove from both x and y
-      if (length(x) != length(y)) {
-        stop("x and y for NA removal are not the same length")
-      }
-      if(any(is.na(x), is.na(y))) {
-        out[["nas_indices_removed"]] <- which(is.na(x) | is.na(y))
-        out[["x"]] <- x[-out[["nas_indices_removed"]]]
-        out[["y"]] <- y[-out[["nas_indices_removed"]]]
-      }
-    }
-  } else { #don't remove NA's
-    if(stopifNA == TRUE & (any(is.na(x)) | !is.null(y) & any(is.na(y)))) {
-      stop("Some values are NA but na.rm = FALSE")
-    }
-  }
-  return(out)
-}
-
-#' A function that adds NA values to a vector or pair of vectors
-#' 
-#' NA's will be added to x and y at indices specified where they had 
-#' been previously removed
-#' 
-#' @param x Vector to add NA's to
-#' @param y Optional second vector to add NA's to
-#' @param nas_indices_removed Indices where NA's had previously been removed
-#'                            (AKA indices where NA's will be in the
-#'                            *output* vector)
-#' @return A list containing: x with NA's added
-#' 
-#'                            y with NA's added
-#' 
-#' @noRd
-add_nas <- function(x, y = NULL, nas_indices_removed) {
-  if(!is.null(nas_indices_removed)) {
-    if(!is.null(y) & length(x) != length(y)) {
-      stop("x and y for NA addition are not the same length")
-    }
-    
-    return_indices <- 1:length(x)
-    for (index in nas_indices_removed) {
-      return_indices[return_indices >= index] <-
-        return_indices[return_indices >= index] + 1
-    }
-    
-    out <- list("x" = rep(NA, length(x) + length(nas_indices_removed)),
-                "y" = NULL)
-    out[["x"]][return_indices] <- x
-    
-    if(!is.null(y)) {
-      out[["y"]] <- rep(NA, length(x) + length(nas_indices_removed))
-      out[["y"]][return_indices] <- y
-    }
-    
-    return(out)
-    
-  } else {return(list(x = x, y = y))}
-}
-
-#' A function that reorders x and y based on x
-#' 
-#' @param x Vector to reorder based on
-#' @param y Vector to reorder based on x
-#' @return A list containing: 
-#' 
-#'     [1] "x" = the reordered x
-#' 
-#'     [2] "y" = the reordered y
-#'                            
-#'     [3] "order" = the original order, such that:
-#'                            
-#'     \code{return[["x"]][order(return[["order"]])] == x}
-#'                            
-#'     and
-#'                            
-#'     \code{return[["y"]][order(return[["order"]])] == y}
-#' 
-#' @noRd
-reorder_xy <- function(x = NULL, y) {
-  if(!is.null(x)) {
-    #Save orig order info so we can put things back at the end
-    start_order <- order(x)
-    #Reorder
-    y <- y[start_order]
-    x <- x[start_order]
-  } else {start_order <- 1:length(y)}
-  
-  return(list(x = x, y = y, order = start_order))
-}
-
-
-#' A function that gets windows for moving-window like calculations
-#' 
-#' @param x Vector of x values
-#' @param y Vector of y values
-#' @param window_width Width of the window (in units of \code{x}).
-#' @param window_width_n Width of the window (in number of \code{y} values).
-#' @param window_height The maximum change in \code{y} within each window.
-#' @param edge_NA Boolean for whether windows that pass the edge of the data
-#'                should be returned as NA or simply truncated at the edge
-#'                of the data.
-#'                
-#'                For instance, moving average-like functions typically want
-#'                edge_NA = TRUE so as not to calculate a moving-average
-#'                on points near the edge of the domain with smaller n
-#'                
-#'                In contrast, extrema-finding typically want edge_NA = FALSE
-#'                so that searching simply stops at the edge of the data
-#' @param force_height_multi_n 
-#'                Boolean for whether windows limits set by \code{window_height}
-#'                should always have at least 3 data points in them (or 2 
-#'                data points for windows located at the edge of the domain)
-#'                         
-#'                This is necessary for window-finding with window_height 
-#'                because otherwise you can end up with windows that contain 
-#'                only a single data-point, counting as both a max and a min
-#' @return A list of vectors, where each vector contains the indices
-#'         of the data in the window centered at that point
-#'      
-#' @noRd   
-get_windows <- function(x, y, window_width_n = NULL, window_width = NULL, 
-                        window_height = NULL, edge_NA, 
-                        force_height_multi_n = FALSE) {
-  if(any(c(is.na(x), is.na(y)))) {
-    stop("NA's must be removed before getting windows")}
-  if(!all(order(x) == 1:length(x))) {
-    stop("data must be ordered before getting windows")}
-  
-  window_starts <- matrix(data = 1, nrow = length(x), ncol = 3)
-  window_ends <- matrix(data = length(x), nrow = length(x), ncol = 3)
-  
-  if(!is.null(window_width_n)) {
-    temp <- 
-      lapply(X = as.list(1:length(x)),
-             xvals = x,
-             FUN = function(xidx, xvals) {
-               which(abs(xidx - 1:length(xvals)) <= (window_width_n - 1)/2)})
-    window_starts[, 1] <- sapply(temp, min)
-    window_ends[, 1] <- sapply(temp, max)
-    if(edge_NA) {
-      window_starts[(1:length(x) + (window_width_n - 1)/2 >= length(x)+1) |
-                    (1:length(x) - (window_width_n - 1)/2 <= 0), 1] <- NA
-      window_ends[(1:length(x) + (window_width_n - 1)/2 >= length(x)+1) |
-                  (1:length(x) - (window_width_n - 1)/2 <= 0), 1] <- NA
-    }
-  }
-  if(!is.null(window_width)) {
-    temp <- lapply(X = as.list(1:length(x)),
-           xvals = x,
-           FUN = function(xidx, xvals) {
-             which(abs(xvals - xvals[xidx]) <= window_width/2)})
-    window_starts[, 2] <- sapply(temp, min)
-    window_ends[, 2] <- sapply(temp, max)
-    if(edge_NA) {
-      window_starts[(x + window_width/2 > max(x)) |
-                    (x - window_width/2 < min(x)), 2] <- NA
-      window_ends[(x + window_width/2 > max(x)) |
-                  (x - window_width/2 < min(x)), 2] <- NA
-    }
-  }
-  if(!is.null(window_height)) {
-    #First calculate all points by all points whether they're close enough
-    # to each other
-    ygrid <- lapply(X = y, yvals = y, window_height = window_height,
-                    FUN = function(y, yvals, window_height) {
-                      which(abs(y-yvals) <= window_height)})
-    #Then find the smallest blocks of contiguous points that are within the
-    # height limit
-    for (i in 1:length(ygrid)) {
-      window_starts[i, 3] <- 
-        ygrid[[i]][
-          max(which(ygrid[[i]] <= i & c(TRUE, diff(ygrid[[i]]) != 1)))]
-      window_ends[i, 3] <-
-        ygrid[[i]][
-          min(which(ygrid[[i]] >= i & c(diff(ygrid[[i]]) != 1, TRUE)))]
-      #Force windows to include at least one point either side if specified
-      if(force_height_multi_n) {
-        window_starts[i, 3] <- min(max(i-1, 1), window_starts[i, 3])
-        window_ends[i, 3] <- max(min(i+1, length(ygrid)), window_ends[i, 3])
-      }
-    }
-  }
-  
-  #Calculate the most-conservative window starts & window ends
-  # then fill in the sequence of values between them & return
-  return(apply(matrix(ncol = 2, nrow = nrow(window_starts),
-                      data = c(
-                        apply(window_starts, MARGIN = 1, FUN = max),
-                        apply(window_ends, MARGIN = 1, FUN = min))),
-               MARGIN = 1,
-               FUN = function(x) {
-                 if(any(is.na(c(x[1], x[2])))) {NA
-                 } else {seq(from = x[1], to = x[2])}
-               },
-               simplify = FALSE))
-}
-
-
 
 # Read functions ----
 
@@ -615,11 +124,16 @@ infer_names <- function(df,
 #'                  provided filenames. When extension is not "csv", "xls", or
 #'                  "xlsx" will use \code{utils::read.table}
 #' @param startrow,endrow,startcol,endcol (optional) the rows and columns where 
-#'                 the measures data are in \code{files},
-#'                 can be a vector or list the same length as \code{files}, or
-#'                 a single value that applies to all \code{files}.
-#'                 If not provided data is presumed to begin on the first
-#'                 row and column of the files.
+#'                 the measures data are located in \code{files}.
+#'                 
+#'                 Can be a vector or list the same length as \code{files}, or
+#'                 a single value that applies to all \code{files}. Values
+#'                 can be numeric or a string that will be automatically
+#'                 converted to numeric by \code{from_excel}.
+#'                 
+#'                 If not provided, data is presumed to begin on the first
+#'                 row and column of the file(s) and end on the last row and
+#'                 column of the file(s).
 #' @param sheet (optional) If data is in .xls or .xlsx files, which sheet it 
 #'                 is located on. Defaults to the first sheet if not specified
 #' @param metadata (optional) non-spectrophotometric data that should be 
@@ -923,14 +437,14 @@ read_blocks <- function(files, extension = NULL,
   }
   
   ##Error checking for output dataframe dimensions
-  if (length(outputs) > 1 &
-      stats::var(sapply(outputs, simplify = TRUE, 
-                 FUN = function(x) {dim(x$data)[1]})) != 0) {
+  if (length(outputs) > 1 &&
+      !all_same(sapply(outputs, simplify = TRUE, 
+                 FUN = function(x) {dim(x$data)[1]}))) {
     warning("Not all blockmeasures have the same number of rows of data\n")
   }
-  if (length(outputs) > 1 &
-      stats::var(sapply(outputs, simplify = TRUE,
-                 FUN = function(x) {dim(x$data)[2]})) != 0) {
+  if (length(outputs) > 1 &&
+      !all_same(sapply(outputs, simplify = TRUE,
+                 FUN = function(x) {dim(x$data)[2]}))) {
     warning("Not all blockmeasures have the same number of columns of data\n")
   }
   
@@ -954,12 +468,18 @@ read_blocks <- function(files, extension = NULL,
 #'                  If none provided, \code{read_wides} will infer file 
 #'                  extension from provided filenames. When extension is not 
 #'                  "csv", "xls", or "xlsx" will use \code{utils::read.table}
-#' @param startrow,endrow,startcol,endcol (optional) the rows and columns where
-#'                  the data is located. If none provided assumes the entire
-#'                  file is data.
-#'                  Can be specified as a numeric or using base-26 Excel letter
-#'                  notation
-#' @param header Boolean for whether there is a header to the data. If FALSE
+#' @param startrow,endrow,startcol,endcol (optional) the rows and columns where 
+#'                 the data are located in \code{files}.
+#'                 
+#'                 Can be a vector or list the same length as \code{files}, or
+#'                 a single value that applies to all \code{files}. Values
+#'                 can be numeric or a string that will be automatically
+#'                 converted to numeric by \code{from_excel}.
+#'                 
+#'                 If not provided, data is presumed to begin on the first
+#'                 row and column of the file(s) and end on the last row and
+#'                 column of the file(s).
+#' @param header logical for whether there is a header to the data. If FALSE
 #'               columns are simple numbered. If TRUE is the row above
 #'               \code{startrow} (if startrow is specified) or the first row
 #'               of the input files (if startrow is not specified)
@@ -1226,12 +746,17 @@ read_wides <- function(files, extension = NULL,
 #'                  If none provided, \code{read_tidys} will infer file 
 #'                  extension from provided filenames. When extension is not 
 #'                  "csv", "xls", or "xlsx" will use \code{utils::read.table}
-#' @param startrow,endrow,startcol,endcol (optional) the rows and columns where
-#'                  the data is located. If none provided assumes the entire
-#'                  file is data.
-#'                  
-#'                  Can be specified as a numeric or using base-26 Excel letter
-#'                  notation
+#' @param startrow,endrow,startcol,endcol (optional) the rows and columns where 
+#'                 the data are located in \code{files}.
+#'                 
+#'                 Can be a vector or list the same length as \code{files}, or
+#'                 a single value that applies to all \code{files}. Values
+#'                 can be numeric or a string that will be automatically
+#'                 converted to numeric by \code{from_excel}.
+#'                 
+#'                 If not provided, data is presumed to begin on the first
+#'                 row and column of the file(s) and end on the last row and
+#'                 column of the file(s).
 #' @param sheet The sheet of the input files where data is located (if input
 #'              files are .xls or .xlsx). If not specified defaults to the first
 #' @param run_names Names to give the tidy files read in. By default uses the
@@ -1412,8 +937,8 @@ read_tidys <- function(files, extension = NULL,
 #' Import blockmeasures
 #' 
 #' Function to import blockmeasures from files and return widemeasures
-#' This function acts as a wrapper to call read_blocks, uninterleave, 
-#' then trans_block_to_wide in one go
+#' This function acts as a wrapper to call \code{read_blocks}, 
+#' \code{uninterleave}, then \code{trans_block_to_wide} in one go
 #' 
 #' @param files Vector of filenames (as strings), each of which is a 
 #'              block-shaped file containing measures data. File formats
@@ -1425,7 +950,8 @@ read_tidys <- function(files, extension = NULL,
 #'                      rowname and column name
 #' @param ... Other arguments to pass to \code{read_blocks}, \code{uninterleave},
 #'            or \code{widen_blocks}
-#' @details     Common arguments that you may want to provide include:
+#' @details     Common arguments that you may want to provide via \code{...}
+#'              include:
 #' 
 #'              \code{startrow}, \code{endrow}, \code{startcol}, \code{endcol}, 
 #'              \code{sheet} - specifying the location of design information 
@@ -1434,6 +960,11 @@ read_tidys <- function(files, extension = NULL,
 #'              \code{metadata} - specifying metadata to \code{read_blocks}
 #'              
 #'              See help for \code{read_blocks} for more details
+#'              
+#'              If you find yourself needing more control, you can run the 
+#'              steps manually, first reading with \code{read_blocks}, 
+#'              separating plates as needed with \code{uninterleave}, 
+#'              then transforming to wide with \code{trans_block_to_wide}.
 #'              
 #' @return If \code{num_plates = 1}, a wide-shaped \code{data.frame}
 #'         containing the measures data.
@@ -1496,7 +1027,8 @@ import_blockmeasures <- function(files, num_plates = 1,
 #'              
 #'              See Details for more information
 #'              
-#' @details     Common arguments that you may want to provide include:
+#' @details     Common arguments that you may want to provide via \code{...}
+#'              include:
 #' 
 #'              \code{startrow}, \code{endrow}, \code{startcol}, \code{endcol}, 
 #'              \code{sheet} - specifying the location of design information 
@@ -1505,11 +1037,18 @@ import_blockmeasures <- function(files, num_plates = 1,
 #'              \code{wellnames_sep} - specifying what character (or "" for none)
 #'              should be used when pasting together the rownames and
 #'              column names. Note that this should be chosen to match
-#'              the wellnames in your measures.
+#'              the well names in your measures.
 #'              
 #'              Note that \code{import_blockdesigns} cannot currently handle
 #'              metadata specified via the \code{metadata} argument of
 #'              \code{read_blocks}
+#'              
+#'              If you find yourself needing more control, you can run the 
+#'              steps manually, first reading with \code{read_blocks},
+#'              pasting as needed with \code{paste_blocks}, 
+#'              transforming to tidy with \code{trans_block_to_wide} and
+#'              \code{trans_wide_to_tidy}, and separating as needed with
+#'              \code{separate_tidys}.
 #'              
 #' @return A tidy-shaped \code{data.frame} containing the design information
 #'         from \code{files}
@@ -1581,7 +1120,6 @@ import_blockdesigns <- function(files, block_names = NULL, sep = NULL, ...) {
 #' Note that either \code{nrows} or \code{block_row_names} must be provided
 #' and that either \code{ncols} or \code{block_col_names} must be provided
 #' 
-#' 
 #' @param nrows,ncols Number of rows and columns in the plate data
 #' @param block_row_names,block_col_names Names of the rows, columns
 #'                                     of the plate blockmeasures data
@@ -1625,7 +1163,8 @@ import_blockdesigns <- function(files, block_names = NULL, sep = NULL, ...) {
 #'                         table will now be c(A,B,...Y,Z,a,b,...,y,z)
 #' @param pattern_split character to split pattern elements provided in
 #'                      \code{...} by, if they're not already a vector
-#' @param ... Each \code{...} argument must be a list with five elements:
+#' @param ... Each \code{...} argument must be named, and must be a list with 
+#'            five elements:
 #' 
 #'              1. a vector of the values
 #'              
@@ -1639,9 +1178,10 @@ import_blockdesigns <- function(files, block_names = NULL, sep = NULL, ...) {
 #'                 If it's a string, will be split by \code{pattern_split}.
 #'                 Pattern will be used as the indices of the values vector.
 #'               
-#'                 0's refer to NA
+#'                 0's refer to NA. The pattern will be recycled as necessary
+#'                 to fill all the wells of the rows and columns specified.
 #'               
-#'              5. a Boolean for whether this pattern should be filled byrow
+#'              5. a logical for whether this pattern should be filled byrow
 #'
 #' @return Depends on \code{output_format}:
 #' 
@@ -1723,6 +1263,7 @@ make_design <- function(nrows = NULL, ncols = NULL,
   }
   
   dot_args <- list(...)
+  if(any(is.null(names(dot_args)))) {stop("Each ... arguments must have a name")}
   
   #Make empty output list
   output <- rep(list(list(
@@ -1743,7 +1284,7 @@ make_design <- function(nrows = NULL, ncols = NULL,
     if(!is.vector(dot_args[[i]][[4]]) & !is.character(dot_args[[i]][[4]])) {
       stop("pattern is not a string nor a vector")
     }
-    if (length(dot_args[[i]][[4]]) > 1) {
+    if (length(dot_args[[i]][[4]]) > 1 || is.numeric(dot_args[[i]][[4]])) {
       pattern_list <- dot_args[[i]][[4]]
     } else if(length(dot_args[[i]][[4]]) == 1) {
       pattern_list <- strsplit(dot_args[[i]][[4]], split = pattern_split)[[1]]
@@ -1765,6 +1306,10 @@ make_design <- function(nrows = NULL, ncols = NULL,
              alphanumeric values")
       }
       pattern_list <- match(pattern_list, lookup_table)
+      if(min(pattern_list, na.rm = TRUE) > 9) {
+        warning("Your pattern doesn't use any of your first 9 values,
+do you need to set `lookup_tbl_start` differently?")
+      }
     }
     
     if (((length(dot_args[[i]][[2]])*length(dot_args[[i]][[3]])) %% 
@@ -1825,31 +1370,39 @@ make_design <- function(nrows = NULL, ncols = NULL,
 
 #' Make design pattern
 #' 
-#' A helper function for use with make_tidydesign
-#' 
-#' @details 
-#' Example:
-#' my_example <- make_tidydesign(nrows = 8, ncols = 12,
-#'       design_element_name = make_designpattern(values = c("L", "G", "C"),
-#'                                                 rows = 2:7, cols = 2:11,
-#'                                                 pattern = "11223300",
-#'                                                 byrow = TRUE))
+#' A helper function for use with \code{make_design}
 #' 
 #' @param values Vector of values to use
 #' @param rows Vector of rows where pattern applies
 #' @param cols Vector of cols where pattern applies
 #' @param pattern Numeric pattern itself, where numbers refer to entries
 #'                in \code{values}
-#' @param byrow Boolean for whether pattern should be created by row
+#' @param byrow logical for whether pattern should be created by row
 #' 
 #' @return \code{list(values, rows, cols, pattern, byrow)}
 #' 
+#' @examples
+#' make_design(nrows = 8, ncols = 12,
+#'             design_element_name = make_designpattern(
+#'                  values = c("A", "B", "C"),
+#'                  rows = 2:7, 
+#'                  cols = 2:11,
+#'                  pattern = "112301",
+#'                  byrow = TRUE))
+#' 
+#' @seealso [gcplyr::make_design()]
+#' 
 #' @export
-make_designpattern <- function(values, rows, cols, pattern, byrow = TRUE) {
+make_designpattern <- function(values, rows, cols, 
+                               pattern = 1:length(values), byrow = TRUE) {
   stopifnot(is.vector(values), is.vector(rows), is.vector(cols),
             (is.character(pattern) | is.vector(pattern)), is.logical(byrow))
   return(list(values, rows, cols, pattern, byrow))
 }
+
+#' @rdname make_designpattern
+#' @export
+mdp <- make_designpattern
 
 #' Fill output data.frame with \code{data} and \code{metadata}
 #'
@@ -2219,7 +1772,7 @@ Putting block_names in filename and writing remaining metadata into file\n")
 #' @param wellnames_sep String to use as separator for well names between 
 #'                      rowname and column name (ordered according to
 #'                      \code{colnames_first}
-#' @param nested_metadata A Boolean indicating the existence of nested metadata
+#' @param nested_metadata A logical indicating the existence of nested metadata
 #'                        in the \code{blockmeasures} list, e.g. as is typically
 #'                        output by \code{read_blocks}. If NULL, will attempt to
 #'                        infer existence of nested metadata
@@ -2244,21 +1797,21 @@ trans_block_to_wide <- function(blocks, wellnames_sep = "",
   #Check that all blocks have same dimensions
   if (length(blocks) > 1) {
     if (nested_metadata) { #there is nested metadata
-      if (stats::var(sapply(blocks, simplify = TRUE, 
-                            FUN = function(x) {dim(x[[1]])[1]})) != 0) {
+      if (!all_same(sapply(blocks, simplify = TRUE, 
+                            FUN = function(x) {dim(x[[1]])[1]}))) {
         stop("Not all blocks have the same number of rows of data")
       }
-      if (stats::var(sapply(blocks, simplify = TRUE,
-                            FUN = function(x) {dim(x[[1]])[2]})) != 0) {
+      if (!all_same(sapply(blocks, simplify = TRUE,
+                            FUN = function(x) {dim(x[[1]])[2]}))) {
         stop("Not all blocks have the same number of columns of data")
       }
     } else { #there is not nested metadata
-      if (stats::var(sapply(blocks, simplify = TRUE, 
-                            FUN = function(x) {dim(x)[1]})) != 0) {
+      if (!all_same(sapply(blocks, simplify = TRUE, 
+                            FUN = function(x) {dim(x)[1]}))) {
         stop("Not all blocks have the same number of rows of data")
       }
-      if (stats::var(sapply(blocks, simplify = TRUE,
-                            FUN = function(x) {dim(x)[2]})) != 0) {
+      if (!all_same(sapply(blocks, simplify = TRUE,
+                            FUN = function(x) {dim(x)[2]}))) {
         stop("Not all blocks have the same number of columns of data")
       }
     }
@@ -2436,7 +1989,7 @@ trans_wide_to_block <- function(wides, collapse = NULL,
 #'                           tidyr::pivot_longer. Each can be provided as vectors
 #'                           the same length as \code{widemeasures}
 #'                           Note that if neither data_cols nor id_cols
-#' @param values_to_numeric Boolean indicating whether values will be coerced
+#' @param values_to_numeric logical indicating whether values will be coerced
 #'                          to numeric. See below for when this may be
 #'                          overridden by arguments passed in \code{...}
 #' @param ... Other functions to be passed to \code{tidyr::pivot_longer}
@@ -2550,7 +2103,7 @@ trans_tidy_to_wide <- function() {
 #'           to \code{dplyr::full_join}
 #' @param drop Should only \code{complete_cases} of the resulting
 #'             data.frame be returned?
-#' @param collapse A Boolean indicating whether x or y is a list containing
+#' @param collapse A logical indicating whether x or y is a list containing
 #'                 data frames that should be merged together before
 #'                 being merged with the other
 #' @param names_to Column name for where \code{names(x)} or \code{names(y)} 
@@ -2568,6 +2121,9 @@ trans_tidy_to_wide <- function() {
 merge_dfs <- function(x, y = NULL, by = NULL, drop = FALSE,
                              collapse = FALSE, names_to = NA,
                              ...) {
+  if(!collapse & (inherits(x, "list") | inherits(y, "list"))) {
+    stop("if x or y are a list, collapse must be TRUE")}
+  
   if(collapse) {
     #First define the worker func that collapses the df's
     collapse_list <- function(listdfs, names_to) {
@@ -2627,7 +2183,7 @@ merge_dfs <- function(x, y = NULL, by = NULL, drop = FALSE,
 #' @param blocks Blocks, either a single data.frame or a list of
 #'                      data.frames
 #' @param sep String to use as separator for output pasted values
-#' @param nested_metadata A Boolean indicating the existence of nested metadata
+#' @param nested_metadata A logical indicating the existence of nested metadata
 #'                        in the \code{blockmeasures} list, e.g. as is typically
 #'                        output by \code{read_blocks}. If NULL, will attempt to
 #'                        infer existence of nested metadata
@@ -2659,21 +2215,21 @@ paste_blocks <- function(blocks, sep = "_", nested_metadata = NULL) {
   #Check that all blocks have same dimensions
   if (length(blocks) > 1) {
     if (nested_metadata) { #there is nested metadata
-      if (stats::var(sapply(blocks, simplify = TRUE, 
-                            FUN = function(x) {dim(x[[1]])[1]})) != 0) {
+      if (!all_same(sapply(blocks, simplify = TRUE, 
+                            FUN = function(x) {dim(x[[1]])[1]}))) {
         stop("Not all blocks have the same number of rows of data")
       }
-      if (stats::var(sapply(blocks, simplify = TRUE,
-                            FUN = function(x) {dim(x[[1]])[2]})) != 0) {
+      if (!all_same(sapply(blocks, simplify = TRUE,
+                            FUN = function(x) {dim(x[[1]])[2]}))) {
         stop("Not all blocks have the same number of columns of data")
       }
     } else { #there is not nested metadata
-      if (stats::var(sapply(blocks, simplify = TRUE, 
-                            FUN = function(x) {dim(x)[1]})) != 0) {
+      if (!all_same(sapply(blocks, simplify = TRUE, 
+                            FUN = function(x) {dim(x)[1]}))) {
         stop("Not all blocks have the same number of rows of data")
       }
-      if (stats::var(sapply(blocks, simplify = TRUE,
-                            FUN = function(x) {dim(x)[2]})) != 0) {
+      if (!all_same(sapply(blocks, simplify = TRUE,
+                            FUN = function(x) {dim(x)[2]}))) {
         stop("Not all blocks have the same number of columns of data")
       }
     }
@@ -2742,12 +2298,15 @@ paste_blocks <- function(blocks, sep = "_", nested_metadata = NULL) {
 #'            string; negative values start at -1 at the far-right of the
 #'            string. The length of \code{sep} should be one less than 
 #'            \code{into}
+#' @param coerce_NA  logical dictating if "NA" strings will be coerced into 
+#'                   \code{NA} values after separating.
 #' @param ... Other arguments passed to \code{tidyr::separate}
 #' 
 #' @return A data frame containing new columns in the place of \code{col}
 #' 
 #' @export
-separate_tidy <- function(data, col, into = NULL, sep = "_", ...) {
+separate_tidy <- function(data, col, into = NULL, sep = "_",
+                          coerce_NA = TRUE, ...) {
   if(is.null(into)) {
     if(col %in% colnames(data)) {
       into <- strsplit(col, split = sep)[[1]]
@@ -2758,8 +2317,13 @@ separate_tidy <- function(data, col, into = NULL, sep = "_", ...) {
     }
   }
   
-  return(
-    tidyr::separate(data = data, col = col, into = into, sep = sep, ...))
+  temp <- tidyr::separate(data = data, col = col, into = into, sep = sep, ...)
+  if(coerce_NA == TRUE) {
+    for (idx in which(colnames(temp) %in% into)) {
+      temp[temp[, idx] == "NA", idx] <- NA
+    }
+  }
+  return(temp)
 }
 
 
@@ -2786,7 +2350,7 @@ separate_tidy <- function(data, col, into = NULL, sep = "_", ...) {
 #'                  
 #'                  This provides an internally-implemented approach similar
 #'                  to \code{dplyr::group_by} and \code{dplyr::mutate}
-#' @param return_fitobject Boolean indicating whether entire object returned
+#' @param return_fitobject logical indicating whether entire object returned
 #'                         by fitting function should be returned. If FALSE,
 #'                         just fitted values are returned.
 #'
@@ -2832,11 +2396,11 @@ separate_tidy <- function(data, col, into = NULL, sep = "_", ...) {
 #'            In such cases, \code{subset_by} can still be specified as a vector
 #'            as long as \code{nrow(data)}
 #' 
-#' @return If return_fitobject == FALSE:
+#' @return If \code{return_fitobject == FALSE:}
 #' 
 #'         A vector, the same length as \code{y}, with the now-smoothed y values
 #'         
-#'         If return_fitobject == TRUE:
+#'         If \code{return_fitobject == TRUE:}
 #'         
 #'         A list the same length as unique(subset_by) where each element is
 #'         an object of the same class as returned by the smoothing method
@@ -2846,10 +2410,21 @@ separate_tidy <- function(data, col, into = NULL, sep = "_", ...) {
 #'         containing the smoothed values of the response variable, and a 
 #'         second element named 'residuals' containing the residuals of the
 #'         fitted values and the input values
+#'         
+#'         **Note: the first version released after Sep 1, 2023 will change **
+#'         **this behavior** to instead maintain the class of the object 
+#'         returned by the smoothing method. After the change, not all methods 
+#'         will return an object with 'fitted' as the first element and 
+#'         'residuals' as the second element.
 #' 
 #' @export
 smooth_data <- function(..., x = NULL, y = NULL, sm_method, subset_by = NULL,
                         return_fitobject = FALSE) {
+  if(return_fitobject == TRUE) { #Warning added in v1.3.0.9000
+    warning("the behavior of return_fitobject = TRUE will change in the first 
+version released after Sep 1, 2023. See Value in ?smooth_data for more details")
+  }
+  
   if("method" %in% names(list(...)) &
      list(...)["method"] %in% c("moving-average","moving-median","loess","gam")){
     stop("'method' is deprecated, use 'sm_method' instead. 'method' is now
@@ -2858,6 +2433,23 @@ reserved for passing 'method' arg via ... to loess or gam")
 
   if(!sm_method %in% c("moving-average", "moving-median", "gam", "loess")) {
     stop("sm_method must be one of: moving-average, moving-median, gam, or loess")
+  }
+
+  check_grouped(name_for_error = "smooth_data", subset_by = subset_by)
+  
+  if(FALSE) { #to-be updated when stackoverflow thread is updated
+    if(all(ls(envir = parent.frame()) == "~")) { #being called within mutate
+      data <- eval(quote(.), parent.frame())
+      if(is.null(subset_by) &
+         !inherits(data, "grouped_df")) {
+        warning("smooth_data called on an ungrouped data.frame and subset_by = NULL")}
+      if(!is.null(subset_by) &
+         inherits(data, "grouped_df")) {
+        warning("smooth_data called with both subset_by and grouping")}
+    } else { #being called outside of mutate
+      if(is.null(subset_by)) {
+        warning("smooth_data called outside of dplyr::mutate and subset_by = NULL")}
+    }
   }
   
   #Parse x and y, and/or ... args, into formula and data
@@ -2978,7 +2570,7 @@ reserved for passing 'method' arg via ... to loess or gam")
 #' @param window_width_n Number of data points wide the moving average window is
 #'                     (therefore, must be an odd number of points)
 #' @param window_width Width of the moving average window (in units of \code{x})
-#' @param na.rm Boolean whether NA's should be removed before analyzing
+#' @param na.rm logical whether NA's should be removed before analyzing
 #' 
 #' @return Vector of smoothed data, with NA's appended at both ends
 #' 
@@ -3013,13 +2605,7 @@ moving_average <- function(formula, data, window_width_n = NULL,
   }
   
   #Check y for being the correct format
-  if(!is.numeric(data[, response_var]) ) {
-    if(!canbe.numeric(data[, response_var])) {
-      stop(paste(response_var, "cannot be coerced to numeric"))
-    } else { #it can be coerced
-      data[, response_var] <- as.numeric(data[, response_var])
-    }
-  }
+  data[, response_var] <- make.numeric(data[, response_var], response_var)
   
   #remove nas
   narm_temp <- rm_nas(x = data[, predictor_var], y = data[, response_var], 
@@ -3056,7 +2642,7 @@ moving_average <- function(formula, data, window_width_n = NULL,
 #' @param window_width_n Number of data points wide the moving median window is
 #'                     (therefore, must be an odd number of points)
 #' @param window_width Width of the moving median window (in units of \code{x})|
-#' @param na.rm Boolean whether NA's should be removed before analyzing
+#' @param na.rm logical whether NA's should be removed before analyzing
 #' 
 #' @return Vector of smoothed data, with NA's appended at both ends
 #' 
@@ -3091,13 +2677,7 @@ moving_median <- function(formula, data, window_width_n = NULL,
   }
   
   #Check y for being the correct format
-  if(!is.numeric(data[, response_var]) ) {
-    if(!canbe.numeric(data[, response_var])) {
-      stop(paste(response_var, "cannot be coerced to numeric"))
-    } else { #it can be coerced
-      data[, response_var] <- as.numeric(data[, response_var])
-    }
-  }
+  data[, response_var] <- make.numeric(data[, response_var], response_var)
   
   #remove nas
   narm_temp <- rm_nas(x = data[, predictor_var], y = data[, response_var], 
@@ -3138,7 +2718,7 @@ moving_median <- function(formula, data, window_width_n = NULL,
 #'               derivative of \code{y} with respect to \code{x}
 #' @param percapita When percapita = TRUE, the per-capita difference or
 #'                  derivative is returned
-#' @param x_scale Factor to scale x by in denominator of derivative calculation
+#' @param x_scale Numeric to scale x by in derivative calculation
 #'                
 #'                Set x_scale to the ratio of the the units of 
 #'                x to the desired units. E.g. if x is in seconds, but the 
@@ -3191,7 +2771,7 @@ moving_median <- function(formula, data, window_width_n = NULL,
 #'                 log-transformations must be used with care, since y-values 
 #'                 at or below 0 will become undefined and results will be 
 #'                 more sensitive to incorrect values of \code{blank}.
-#' @param na.rm Boolean whether NA's should be removed before analyzing
+#' @param na.rm logical whether NA's should be removed before analyzing
 #' 
 #' @details For per-capita derivatives, \code{trans_y = 'linear'} and
 #'          \code{trans_y = 'log'} approach the same value as time resolution
@@ -3233,24 +2813,20 @@ calc_deriv <- function(y, x = NULL, return = "derivative", percapita = FALSE,
   if(!trans_y %in% c("linear", "log")) {
     stop("trans_y must be one of c('linear', 'log')")}
   
-  if(trans_y == "log" && (return == "difference" | percapita == FALSE)) {
+  if(trans_y == "log" && (return == "difference" || percapita == FALSE)) {
     stop("when trans_y = 'log', return must be 'derivative' and percapita must be 'TRUE'")}
   
   if(is.null(y)) {stop("y must be provided")}
   if(length(x_scale) > 1) {stop("x_scale must be a single value")}
   
-  if(!is.numeric(x_scale)) {
-    if(!canbe.numeric(x_scale)) {stop("x_scale must be numeric")
-    } else {x_scale <- as.numeric(x_scale)}
-  }
+  x_scale <- make.numeric(x_scale, "x_scale")
   if(is.na(x_scale)) {stop("x_scale cannot be NA")}
   
-  if (!is.null(x)) {
-    if(!canbe.numeric(x)) {stop("x is not numeric")
-    } else {x <- as.numeric(x)}
-  }
-  if(!is.numeric(y)) {y <- as.numeric(y)}
+  x <- make.numeric(x, "x")
+  y <- make.numeric(y, "y")
   
+  check_grouped(name_for_error = "calc_deriv", subset_by = subset_by)
+
   #Set up subset_by
   if(is.null(subset_by)) {subset_by <- rep("A", length(y))}
   
@@ -3268,9 +2844,31 @@ calc_deriv <- function(y, x = NULL, return = "derivative", percapita = FALSE,
   for (i in 1:length(unique(subset_by))) {
     indices <- which(subset_by == unique(subset_by)[i])
     
+    sub_y <- y[indices]
+    sub_x <- x[indices]
+    
+    #Blank subtraction
+    if(!is.null(blank)) {sub_y <- sub_y - blank[i]}
+    
+    if(trans_y == "log") {
+      caught_log <- myTryCatch(log(sub_y))
+      if(!is.null(caught_log$warning)) {
+        warning(paste("during log-transformation,", caught_log$warning))
+        caught_log$value[is.nan(caught_log$value)] <- NA}
+      if(!is.null(caught_log$error)) {
+        stop(paste("during log-transformation,", caught_log$error))}
+      sub_y <- caught_log$value
+      if(any(is.infinite(sub_y))) {
+        warning("infinite values created during log-transformation, treating as NA's")
+        sub_y[is.infinite(sub_y)] <- NA
+      }
+    }
+    
     #remove nas
-    narm_temp <- rm_nas(x = x[indices], y = y[indices], 
+    narm_temp <- rm_nas(x = sub_x, y = sub_y, 
                         na.rm = na.rm, stopifNA = FALSE)
+    
+    if(length(narm_temp[["y"]]) <= 1) {ans[indices] <- NA; next}
     
     #Reorder as needed
     order_temp <- reorder_xy(x = narm_temp[["x"]], y = narm_temp[["y"]])
@@ -3279,22 +2877,24 @@ calc_deriv <- function(y, x = NULL, return = "derivative", percapita = FALSE,
     sub_y <- order_temp[["y"]]
     sub_x <- order_temp[["x"]]
     
-    #Blank subtraction
-    if(!is.null(blank)) {sub_y <- sub_y - blank[i]}
-    
     if(is.null(window_width) & is.null(window_width_n)) {
       #Calculate differences
       sub_ans <- sub_y[2:length(sub_y)]-sub_y[1:(length(sub_y)-1)]
-      #Percapita (if specified)
-      if(percapita) {sub_ans <- sub_ans/sub_y[1:(length(sub_y)-1)]}
+      
       #Derivative & rescale (if specified)
       if(return == "derivative") {
         sub_ans <- sub_ans/
           ((sub_x[2:length(sub_x)]-sub_x[1:(length(sub_x)-1)])/x_scale)
       }
+      
+      #Percapita
+      # (if trans_y = 'linear', need to divide by y to make percap
+      #  if trans_y = 'log', must be deriv and deriv is already percap)
+      if(percapita && trans_y == 'linear') {
+        sub_ans <- sub_ans/sub_y[1:(length(sub_y)-1)]}
     } else {
       sub_ans <- rep(NA, length(sub_x))
-      if(trans_y == "log") {sub_y <- log(sub_y)}
+
       windows <- get_windows(x = sub_x, y = sub_y, edge_NA = TRUE,
                              window_width_n = window_width_n, 
                              window_width = window_width)
@@ -3302,17 +2902,16 @@ calc_deriv <- function(y, x = NULL, return = "derivative", percapita = FALSE,
         if(any(is.na(sub_y[windows[[j]]]) | is.infinite(sub_y[windows[[j]]]))) {
           sub_ans[j] <- NA
         } else {
+          #get slope
+          # (if trans_y = 'linear', slope is derivative
+          #  if trans_y = 'log', slope is already percap deriv)
           temp <- stats::lm(myy ~ myx, 
                             data = data.frame(myy = sub_y[windows[[j]]],
                                               myx = sub_x[windows[[j]]]))
-          if(trans_y == "linear") {
-            sub_ans[j] <- temp$coefficients["myx"]*x_scale
-            if(percapita) {
-              sub_ans[j] <- 
-                sub_ans[j]/temp$fitted.values[which(windows[[j]] == j)]
-            }
-          } else {
-            sub_ans[j] <- temp$coefficients["myx"]*x_scale
+          sub_ans[j] <- temp$coefficients["myx"]*x_scale
+          if(percapita == TRUE && trans_y == 'linear') {
+            sub_ans[j] <- 
+              sub_ans[j]/temp$fitted.values[which(windows[[j]] == j)]
           }
         }
       }
@@ -3332,26 +2931,39 @@ calc_deriv <- function(y, x = NULL, return = "derivative", percapita = FALSE,
   return(ans)
 }
 
+
+
+#' Calculate doubling time equivalent of per-capita growth rate
+#' 
+#' Provided a vector of per-capita growth rates, this function returns 
+#' the vector of equivalent doubling times
+#' 
+#' @param y       Vector of per-capita derivative data to calculate the 
+#'                equivalent doubling time of
+#' @param x_scale Numeric to scale per-capita derivative values by
+#'                
+#'                Set x_scale to the ratio of the the units of 
+#'                y to the desired units. E.g. if y is in per-second, but the 
+#'                desired doubling time is in minutes, \code{x_scale = 60} 
+#'                (since there are 60 seconds in 1 minute).
+#' 
+#' @return A vector of values for the doubling time equivalent to the
+#'         per-capita growth rate supplied for \code{y}
+#' 
+#' @export   
+doubling_time <- function(y, x_scale = 1) {
+  #Check inputs
+  y <- make.numeric(y, "y")
+  x_scale <- make.numeric(x_scale, "x_scale")
+
+  return(log(2)/(x_scale * y))
+}
+
 # Analyze ----
 
-#' Find local extrema of numeric vector
+#' Find local extrema of a numeric vector
 #' 
-#' This function takes a vector of \code{y} values and returns a vector
-#' of the indices of all local value extrema (by default, this includes both
-#' local minima and local maxima). One of \code{window_width}, 
-#' \code{window_width_n}, or \code{window_height} must be provided
-#' 
-#' @details 
-#' If multiple of \code{window_width}, \code{window_width_n}, or 
-#' \code{window_height} are provided, steps are limited conservatively 
-#' (a single step must meet all criteria)
-#' 
-#' This function is designed to be compatible for use within
-#'  dplyr::group_by and dplyr::summarize
-#'  
-#' In the case of exact ties in \code{y} values within \code{window_width}, 
-#' \code{window_width_n}, and \code{window_height} (as applicable) of each 
-#' other, only the first local extrema is returned.
+#' These functions take a vector of \code{y} values and identify local extrema.
 #'   
 #' @param y Numeric vector of y values in which to identify local extrema
 #' @param x Optional numeric vector of corresponding x values
@@ -3381,29 +2993,65 @@ calc_deriv <- function(y, x = NULL, return = "derivative", percapita = FALSE,
 #' @param return One of c("index", "x", "y"), determining whether the function
 #'               will return the index, x value, or y value associated with the
 #'               identified extremas
-#' @param return_maxima,return_minima Boolean for which classes of local extrema
+#' @param return_maxima,return_minima logical for which classes of local extrema
 #'                                    to return
 #' @param return_endpoints Should the first and last values in \code{y}
 #'                         be included if they are in the returned 
 #'                         vector of extrema?
-#' @param subset A vector of Boolean values indicating which x and y values
+#' @param subset A vector of logical values indicating which x and y values
 #'               should be included (TRUE) or excluded (FALSE).
 #'               
 #'               If \code{return = "index"}, index will be for the whole 
 #'               vector and not the subset of the vector
-#' @param na.rm Boolean whether NA's should be removed before analyzing
+#' @param na.rm logical whether NA's should be removed before analyzing
 #' @param width_limit Deprecated, use \code{window_width} instead
 #' @param width_limit_n Deprecated, use \code{window_width_n} instead
 #' @param height_limit Deprecated, use \code{window_height} instead
-#' @return If \code{return = "index"}, a vector of indices corresponding 
-#'           to local extrema in the data
-#'           
-#'         If \code{return = "x"}, a vector of x values corresponding
-#'           to local extrema in the data
-#'          
-#'         If \code{return = "y"}, a vector of y values corresponding
-#'           to local extrema in the data
+#' @param ... (for \code{first_maxima} and \code{first_minima}), other 
+#'            parameters to pass to \code{find_local_extrema}
 #' 
+#' @details 
+#' For \code{find_local_extrema}, one of \code{window_width}, 
+#' \code{window_width_n}, or \code{window_height} must be provided.
+#' 
+#' For \code{first_minima} and \code{first_maxima}, if none of 
+#' \code{window_width}, \code{window_width_n}, or \code{window_height} are 
+#' provided, \code{window_width_n} is set to 20% of the data by default.
+#' 
+#' If multiple of \code{window_width}, \code{window_width_n}, or 
+#' \code{window_height} are provided, steps are limited conservatively 
+#' (a single step must meet all criteria)
+#' 
+#' This function is designed to be compatible for use within
+#'  \code{dplyr::group_by} and \code{dplyr::summarize}
+#'  
+#' In the case of exact ties in \code{y} values within a window, only the 
+#' first local extrema is returned.
+#' 
+#' @return 
+#'    \code{find_local_extrema} returns a vector corresponding to all the 
+#'    found local extrema.
+#' 
+#'    \code{first_maxima} returns only the first maxima, so is a shortcut for 
+#'    \code{find_local_extrema(return_maxima = TRUE, return_minima = FALSE)[1]}
+#' 
+#'    \code{first_minima} returns only the first minima, so is a shortcut for
+#'    \code{find_local_extrema(return_maxima = FALSE, return_minima = TRUE)[1]}
+#' 
+#'    If \code{return = "index"}, the returned value(s) are the indices
+#'    corresponding to local extrema in the data
+#'           
+#'    If \code{return = "x"}, the returned value(s) are the x value(s) 
+#'    corresponding to local extrema in the data
+#'          
+#'    If \code{return = "y"}, the returned value(s) are the y value(s)
+#'    corresponding to local extrema in the data
+#' 
+#' @name ExtremaFunctions
+NULL
+
+
+#' @rdname ExtremaFunctions
 #' @export                             
 find_local_extrema <- function(y, x = NULL, 
                                window_width = NULL,
@@ -3452,13 +3100,9 @@ find_local_extrema <- function(y, x = NULL,
   if(is.null(x) & return == "x") {stop('return = "x" but x is not provided')}
   
   #Numeric checks/coercion
-  if(!canbe.numeric(y)) {stop("y must be numeric")
-  } else {y <- as.numeric(y)}
+  y <- make.numeric(y, "y")
   if(is.null(x)) {x <- 1:length(y)
-  } else {
-    if(!canbe.numeric(x)) {stop("x must be numeric")
-    } else {x <- as.numeric(x)}
-  }
+  } else {x <- make.numeric(x)}
   
   #Take subset
   if(!is.null(subset)) {
@@ -3475,6 +3119,8 @@ find_local_extrema <- function(y, x = NULL,
   
   #remove nas
   narm_temp <- rm_nas(x = x, y = y, na.rm = na.rm, stopifNA = TRUE)
+  
+  if(length(narm_temp$y) == 0) {return(NA)}
   
   #reorder
   order_temp <- reorder_xy(x = narm_temp[["x"]], y = narm_temp[["y"]])
@@ -3531,17 +3177,493 @@ find_local_extrema <- function(y, x = NULL,
   }
 }
 
-#' Find the first local peak of a numeric vector
+            
+#' @rdname ExtremaFunctions
+#' @export 
+first_maxima <- function(y, x = NULL, 
+                       window_width = NULL,
+                       window_width_n = NULL,
+                       window_height = NULL,
+                       return = "index", return_endpoints = TRUE, 
+                       ...) {
+  if(is.null(window_width) & is.null(window_width_n) & is.null(window_height)) {
+    window_width_n <- round(0.2*length(y)) - (1 - round(0.2*length(y))%%2)
+  }
+  
+  if (any(c("return_maxima", "return_minima") %in% names(list(...)))) {
+    stop("return_maxima and return_minima cannot be changed in first_peak, 
+use find_local_extrema for more flexibility")
+  }
+  
+  return(find_local_extrema(y = y, x = x,
+                            return_maxima = TRUE,
+                            return_minima = FALSE,
+                            return_endpoints = return_endpoints,
+                            window_width = window_width,
+                            window_width_n = window_width_n,
+                            window_height = window_height,
+                            return = return, ...)[1])
+}
+
+#' @rdname ExtremaFunctions
+#' @export 
+first_minima <- function(y, x = NULL, 
+                         window_width = NULL,
+                         window_width_n = NULL,
+                         window_height = NULL,
+                         return = "index", return_endpoints = TRUE, 
+                         ...) {
+  if(is.null(window_width) & is.null(window_width_n) & is.null(window_height)) {
+    window_width_n <- round(0.2*length(y)) - (1 - round(0.2*length(y))%%2)
+  }
+  
+  if (any(c("return_maxima", "return_minima") %in% names(list(...)))) {
+    stop("return_maxima and return_minima cannot be changed in first_peak, 
+use find_local_extrema for more flexibility")
+  }
+  
+  return(find_local_extrema(y = y, x = x,
+                            return_maxima = FALSE,
+                            return_minima = TRUE,
+                            return_endpoints = return_endpoints,
+                            window_width = window_width,
+                            window_width_n = window_width_n,
+                            window_height = window_height,
+                            return = return, ...)[1])
+}
+
+
+#' Find point(s) when a numeric vector crosses some threshold
+#' 
+#' These functions take a vector of \code{y} values and identify points where
+#' the \code{y} values cross some \code{threshold} y value.
+#' 
+#' @param y Numeric vector of y values in which to identify threshold
+#'          crossing event(s)
+#' @param x Optional numeric vector of corresponding x values
+#' @param threshold Threshold y value of interest
+#' @param return One of \code{c("index", "x")}, determining whether the function
+#'               will return the \code{index} or \code{x} value associated with the
+#'               threshold-crossing event.
+#'               
+#'               If \code{index}, it will refer to the data point immediately after
+#'               the crossing event.
+#'               
+#'               If \code{x}, it will use linear interpolation and the data
+#'               points immediately before and after the threshold-crossing
+#'               to return the exact \code{x} value when the threshold crossing
+#'               occurred
+#' @param subset A vector of logical values indicating which x and y values
+#'               should be included (TRUE) or excluded (FALSE).
+#'               
+#'               If \code{return = "index"}, index will be for the whole 
+#'               vector and not the subset of the vector
+#' @param return_rising logical for whether crossing events where \code{y}
+#'                      rises above \code{threshold} should be returned
+#' @param return_falling logical for whether crossing events where \code{y}
+#'                      falls below \code{threshold} should be returned
+#' @param return_endpoints logical for whether startpoint should be returned
+#'                      when the startpoint is above \code{threshold} and
+#'                      \code{return_rising = TRUE}, or when the startpoint is
+#'                      below \code{threshold} and \code{return_falling = TRUE}
+#' @param na.rm logical whether NA's should be removed before analyzing.
+#'              If \code{return = 'index'}, indices will refer to the original
+#'              \code{y} vector *including* \code{NA} values
+#' @param ... (for \code{first_above} and \code{first_below}) other arguments 
+#'            to pass to \code{find_threshold_crosses}
+#'              
+#' @details 
+#' This function is designed to be compatible for use within
+#'  \code{dplyr::group_by} and \code{dplyr::summarize}
+#'  
+#' @return 
+#'    \code{find_threshold_crosses} returns a vector corresponding to all the 
+#'    threshold crossings.
+#' 
+#'    \code{first_above} returns only the first time the \code{y} values
+#'    rise above the threshold, so is a shortcut for 
+#'    \code{find_threshold_crosses(return_rising = TRUE, return_falling = FALSE)[1]}
+#' 
+#'    \code{first_below} returns only the first time the \code{y} values
+#'    fall below the threshold, so is a shortcut for 
+#'    \code{find_threshold_crosses(return_rising = FALSE, return_falling = TRUE)[1]}
+#' 
+#'    If \code{return = "index"}, the returned value(s) are the indices
+#'    immediately following threshold crossing(s)
+#'           
+#'    If \code{return = "x"}, the returned value(s) are the x value(s) 
+#'    corresponding to threshold crossing(s)
+#'    
+#'    If no threshold-crossings are detected that meet the criteria, will
+#'    return \code{NA}
+#'          
+#' @name ThresholdFunctions
+NULL
+
+
+#' @rdname ThresholdFunctions
+#' @export 
+find_threshold_crosses <- function(y, x = NULL, threshold,
+                                   return = "index",
+                                   return_rising = TRUE, return_falling = TRUE,
+                                   return_endpoints = TRUE,  
+                                   subset = NULL, na.rm = TRUE) {
+  if (!return %in% c("x", "index")) {
+    stop('return must be "x" or "index"')
+  }
+  if(!is.null(x) & length(x) != length(y)) {
+    stop("x and y must be the same length")
+  }
+  if(return == "x" & is.null(x)) {stop("return = 'x' but x is not provided")}
+  
+  #Numeric checks/coercion
+  y <- make.numeric(y, "y")
+  x <- make.numeric(x, "x")
+  
+  #Take subset
+  if(!is.null(subset)) {
+    if(length(subset) != length(y)) {stop("subset and y must be the same length")}
+    if(!all(is.logical(subset))) {stop("subset must be vector of logical values")}
+    indices <- which(subset)
+    if(!is.null(x)) {x <- x[indices]}
+    y <- y[indices]
+  } else {indices <- 1:length(y)}
+  
+  #remove nas
+  narm_temp <- rm_nas(x = x, y = y, na.rm = na.rm, stopifNA = TRUE)
+  
+  if(length(narm_temp$y) == 0) {return(NA)}
+  
+  #reorder
+  order_temp <- reorder_xy(x = narm_temp[["x"]], y = narm_temp[["y"]])
+  
+  #Save to temp vars
+  x <- order_temp[["x"]]
+  y <- order_temp[["y"]]
+  
+  #Check startpoint
+  out_idx <- NULL
+  if(return_endpoints) {
+    if(return_rising & y[1] >= threshold) {out_idx <- c(out_idx, 1)}
+    if(return_falling & y[1] <= threshold) {out_idx <- c(out_idx, 1)}
+  }
+  
+  #Find indices of crossing events
+  # (saving the index of the value *before* the cross has happened)
+  if(return_rising) {
+    out_idx <- c(out_idx, 1+which(y[2:length(y)] > threshold &
+                                  y[1:(length(y)-1)] <= threshold))
+  }
+  if(return_falling) {
+    out_idx <- c(out_idx, 1+which(y[2:length(y)] < threshold &
+                                  y[1:(length(y)-1)] >= threshold))
+  }
+  
+  if(length(out_idx) == 0) {return(NA)
+  } else {out_idx <- out_idx[order(out_idx)]}
+  
+  if(return == "index") {
+    #return to original order
+    out_idx <- order_temp[["order"]][out_idx]
+    
+    #Change indices to account for NA's removed
+    for (index in narm_temp$nas_indices_removed) {
+      out_idx[out_idx >= index] <- (out_idx[out_idx >= index] + 1)
+    }
+  
+    #Change indices to account for subset being used
+    out_idx <- indices[out_idx]
+    
+    return(out_idx[order(out_idx)])
+    
+  } else { #return = "x"
+    if(out_idx[1] == 1) {x2 <- x[1]; out_idx <- out_idx[-1]
+    } else {x2 <- NULL}
+    
+    if(length(out_idx) > 0) {
+      x2 <- c(x2, solve_linear(x1 = x[(out_idx-1)], y1 = y[(out_idx-1)],
+                          x2 = x[out_idx], y2 = y[out_idx],
+                          y3 = threshold, named = FALSE))
+    }
+    return(x2)
+  }
+}
+
+#' @rdname ThresholdFunctions
+#' @export  
+first_below <- function(y, x = NULL, threshold, return = "index",
+                        return_endpoints = TRUE, ...) {
+  if(any(c("return_rising", "return_falling") %in% names(list(...)))) {
+    stop("return_rising and return_falling cannot be changed in first_below,
+please use find_threshold_crosses for more flexibility")
+  }
+  return(find_threshold_crosses(y = y, x = x,
+                                threshold = threshold,
+                                return = return, 
+                                return_endpoints = return_endpoints,
+                                return_rising = FALSE,
+                                return_falling = TRUE,
+                                ...)[1])
+}
+
+#' @rdname ThresholdFunctions
+#' @export 
+first_above <- function(y, x = NULL, threshold, return = "index",
+                        return_endpoints = TRUE, ...) {
+  if(any(c("return_rising", "return_falling") %in% names(list(...)))) {
+    stop("return_rising and return_falling cannot be changed in first_below,
+please use find_threshold_crosses for more flexibility")
+  }
+  return(find_threshold_crosses(y = y, x = x,
+                                threshold = threshold,
+                                return = return,
+                                return_endpoints = return_endpoints,
+                                return_rising = TRUE,
+                                return_falling = FALSE,
+                                ...)[1])
+}
+
+#' Calculate area under the curve
+#' 
+#' This function takes a vector of \code{x} and \code{y} values
+#' and returns a scalar for the area under the curve, calculated using 
+#' the trapezoid rule
+#'  
+#' @param x Numeric vector of x values
+#' @param y Numeric vector of y values
+#' @param xlim Vector, of length 2, delimiting the x range over which the
+#'             area under the curve should be calculated (where NA can be
+#'             provided for the area to be calculated from the start or to
+#'             the end of the data)
+#' @param blank Value to be subtracted from \code{y} values before calculating
+#'              area under the curve
+#' @param na.rm a logical indicating whether missing values should be removed
+#' @param neg.rm a logical indicating whether \code{y} values below zero should 
+#'               be treated as zeros. If \code{FALSE}, area under the curve
+#'               for negative \code{y} values will be calculated normally,
+#'               effectively subtracting from the returned value.
+#' 
+#' @details 
+#' This function is designed to be compatible for use within
+#'  \code{dplyr::group_by} and \code{dplyr::summarize}
+#'
+#' @return A scalar for the total area under the curve
+#'             
+#' @export
+auc <- function(x, y, xlim = NULL, blank = 0, na.rm = TRUE, neg.rm = FALSE) {
+  if(!is.vector(x)) {stop(paste("x is not a vector, it is class:", class(x)))}
+  if(!is.vector(y)) {stop(paste("y is not a vector, it is class:", class(y)))}
+  
+  x <- make.numeric(x)
+  y <- make.numeric(y)
+  
+  #remove nas
+  dat <- rm_nas(x = x, y = y, na.rm = na.rm, stopifNA = TRUE)
+  
+  if(length(dat$y) <= 1) {return(NA)}
+  
+  #reorder
+  dat <- reorder_xy(x = dat[["x"]], y = dat[["y"]])
+  
+  x <- dat[["x"]]
+  y <- dat[["y"]]
+  
+  y <- y - blank
+
+  #Check if xlim has been specified
+  if(!is.null(xlim)) {
+    stopifnot(is.vector(xlim), length(xlim) == 2, any(!is.na(xlim)))
+    if(is.na(xlim[1])) {xlim[1] <- x[1]}
+    if(is.na(xlim[2])) {xlim[2] <- x[length(x)]}
+    if(xlim[1] < x[1]) {
+      warning("xlim specifies lower limit below the range of x\n")
+      xlim[1] <- x[1]
+    } else { #add lower xlim to the x vector and the interpolated y to y vector
+      if (!(xlim[1] %in% x)) {
+        x <- c(x, xlim[1])
+        xndx <- max(which(x < xlim[1]))
+        y <- c(y, solve_linear(x1 = x[xndx], y1 = y[xndx],
+                               x2 = x[xndx+1], y2 = y[xndx+1],
+                               x3 = xlim[1], named = FALSE))
+                               
+        #reorder
+        dat <- reorder_xy(x = x, y = y)
+        
+        x <- dat[["x"]]
+        y <- dat[["y"]]
+      }
+    }
+       
+    if(xlim[2] > x[length(x)]) {
+      warning("xlim specifies upper limit above the range of x\n")
+      xlim[2] <- x[length(x)]
+    } else { #add upper xlim to the x vector and the interpolated y to y vector
+      if (!(xlim[2] %in% x)) {
+        x <- c(x, xlim[2])
+        xndx <- max(which(x < xlim[2]))
+        y <- c(y, solve_linear(x1 = x[xndx], y1 = y[xndx],
+                               x2 = x[xndx+1], y2 = y[xndx+1],
+                               x3 = xlim[2], named = FALSE))
+        
+        #reorder
+        dat <- reorder_xy(x = x, y = y)
+        
+        x <- dat[["x"]]
+        y <- dat[["y"]]
+      }
+    }
+    y <- y[(x >= xlim[1]) & (x <= xlim[2])]
+    x <- x[(x >= xlim[1]) & (x <= xlim[2])]
+  }
+  
+  if(any(y < 0)) {
+    if(neg.rm == TRUE) {y[y < 0] <- 0
+    } else {warning("some y values are below 0")}
+  }
+  
+  #Calculate auc
+  # area = 0.5 * (y1 + y2) * (x2 - x1)
+  return(sum(0.5 * 
+               (y[1:(length(y)-1)] + y[2:length(y)]) *
+               (x[2:length(x)] - x[1:(length(x)-1)])))
+}
+
+
+#' Calculate lag time
+#' 
+#' Lag time is calculated by projecting a tangent line at the point
+#' of maximum (per-capita) derivative backwards to find the time when it
+#' intersects with the starting y-value
+#' 
+#' @param x Vector of x values (typically time)
+#' @param y Vector of y values (typically density)
+#' @param deriv Vector of derivative values (typically per-capita derivative)
+#' @param trans_y  One of \code{c("linear", "log")} specifying the
+#'                 transformation of y-values.
+#' 
+#'                 \code{'log'} is the default, producing calculations of
+#'                 lag time assuming a transition to exponential growth
+#'                 
+#'                 \code{'linear'} is available for alternate uses
+#' @param na.rm a logical indicating whether missing values should be removed
+#' @param slope Slope to project from x1,y1 to y0 (typically per-capita growth
+#'              rate). If not provided, will be calculated as \code{max(deriv)}
+#' @param x1 x value (typically time) to project slope from. If not provided,
+#'           will be calculated as \code{x[which.max(deriv)]}.
+#' @param y1 y value (typically density) to project slope from. If not provided,
+#'           will be calculated as \code{y[which.max(deriv)]}.
+#' @param y0 y value (typically density) to find intersection of slope from
+#'             x1, y1 with. If not provided, will be calculated as \code{min(y)}
+#' @details 
+#' For most typical uses, simply supply \code{x}, \code{y}, and \code{deriv}
+#' (using the per-capita derivative and \code{trans_y = 'log'}).
+#' 
+#' Advanced users may wish to use alternate values for the slope, origination
+#' point, or initial y-value. In that case, values can be supplied to
+#' \code{slope}, \code{x1}, \code{y1}, and/or \code{y0}, which will override
+#' the default calculations. If and only if all of \code{slope}, \code{x1}, 
+#' \code{y1}, and \code{y0} are provided, \code{lag_time} is vectorized on
+#' their inputs and will return a vector of lag time values.
+#' 
+#' This function is designed to be compatible for use within
+#'  \code{dplyr::group_by} and \code{dplyr::summarize}
+#'
+#' @return Typically a scalar of the lag time in units of x. See Details for
+#' cases when value will be a vector.
+#'             
+#' @export
+lag_time <- function(x = NULL, y = NULL, deriv = NULL, 
+                     trans_y = "log", na.rm = TRUE,
+                     slope = NULL, x1 = NULL, y1 = NULL, y0 = NULL) {
+  x <- make.numeric(x, "x")
+  y <- make.numeric(y, "y")
+  deriv <- make.numeric(deriv, "deriv")
+  slope <- make.numeric(slope, "slope")
+  y0 <- make.numeric(y0, "y0")
+  y1 <- make.numeric(y1, "y1")
+  x1 <- make.numeric(x1, "x1")
+  
+  narm_temp <- rm_nas(x = x, y = y, deriv = deriv, na.rm = na.rm)
+  x <- narm_temp[["x"]]
+  y <- narm_temp[["y"]]
+  deriv <- narm_temp[["deriv"]]
+  
+  if(trans_y == "log") {
+    if(!is.null(y) && length(y) > 0) {
+      caught_log <- myTryCatch(log(y))
+      if(!is.null(caught_log$warning)) {
+        warning(paste("during log-transformation,", caught_log$warning))
+        caught_log$value[is.nan(caught_log$value)] <- NA}
+      if(!is.null(caught_log$error)) {
+        stop(paste("during log-transformation,", caught_log$error))}
+      y <- caught_log$value
+      if(any(is.infinite(y))) {
+        warning("infinite values created during log-transformation, treating as NA's")
+        y[is.infinite(y)] <- NA
+      }
+    }
+    if(!is.null(y0)) {y0 <- log(y0)}
+    if(!is.null(y1)) {y1 <- log(y1)}
+  }
+  
+  narm_temp <- rm_nas(x = x, y = y, deriv = deriv, na.rm = na.rm)
+  x <- narm_temp[["x"]]
+  y <- narm_temp[["y"]]
+  deriv <- narm_temp[["deriv"]]
+  #(cases where ~all values are removed handled with return(NA) code below)
+  
+  if(is.null(slope)) {
+    if(is.null(deriv)) {stop("deriv or slope must be provided")}
+    if(length(deriv) < 1) {return(NA)}
+    slope <- max(deriv, na.rm = na.rm)
+  }
+  if(length(y) < 2 && (is.null(y0) || is.null(y1))) {return(NA)}
+  if(is.null(y0)) {
+    if(is.null(y)) {stop("y or y0 must be provided")}
+    if(length(y) < 1) {return(NA)}
+    y0 <- min(y, na.rm = na.rm)
+  }
+  if(xor(is.null(x1), is.null(y1))) {
+    stop("both x1 and y1, or neither, must be specified")
+  } else if(is.null(y1)) {
+    if(is.null(deriv)) {
+      if(is.null(y)) {stop("y1, or deriv and y, must be provided")}
+      if(is.null(x)) {stop("x1, or deriv and x, must be provided")}
+    }
+    if(length(deriv) < 1 || length(y) < 1 || length(x) < 1) {return(NA)}
+    idxs <- which(deriv == max(deriv, na.rm = na.rm))
+    if(length(idxs) > 1) {
+      warning("multiple timepoints have the maximum derivative, using the first")}
+    y1 <- y[idxs[1]]
+    x1 <- x[idxs[1]]
+  }
+
+  if(!all_same(c(length(y0), length(y1), length(slope), length(x1)))) {
+    warning("Only returning the first lag time value")
+    y0 <- y0[1]; y1 <- y1[1]; slope <- slope[1]; x1 <- x1[1]
+  }
+  
+  return(solve_linear(x1 = x1, y1 = y1, m = slope, y2 = y0, named = FALSE))
+}
+
+# Legacy Code ----
+
+#' Find the first local maxima of a numeric vector
+#' 
+#' This function has been deprecated in favor of the identical new 
+#' function \code{first_maxima}
 #' 
 #' This function takes a vector of \code{y} values and returns the index
-#' (by default) of the first local maxima. It serves as a wrapper function
-#' for \code{find_local_extrema}
+#' (by default) of the first local maxima. It serves as a shortcut
+#' for \code{find_local_extrema(return_maxima = TRUE, return_minima = FALSE)[1]}
+#' 
+#' @seealso [first_maxima()]
 #' 
 #' @param y Numeric vector of y values in which to identify local extrema
 #' @param x Optional numeric vector of corresponding x values
 #' @param return One of c("index", "x", "y"), determining whether the function
 #'               will return the index, x value, or y value associated with the
-#'               first peak in y values
+#'               first maxima in y values
 #' @param window_width Width of the window (in units of \code{x}) used to
 #'                   search for local extrema. A narrower width will be more
 #'                   sensitive to narrow local maxima/minima, while a wider
@@ -3586,328 +3708,24 @@ find_local_extrema <- function(y, x = NULL,
 #' will be used.
 #' 
 #' This function is designed to be compatible for use within
-#'  dplyr::group_by and dplyr::summarize
+#'  \code{dplyr::group_by} and \code{dplyr::summarize}
 #'                    
-#' @export      
+#' @export    
 first_peak <- function(y, x = NULL, 
                        window_width = NULL,
                        window_width_n = NULL,
                        window_height = NULL,
                        return = "index", return_endpoints = TRUE, 
                        ...) {
-  if(is.null(window_width) & is.null(window_width_n) & is.null(window_height)) {
-    window_width_n <- round(0.2*length(y)) - (1 - floor(0.2*length(y))%%2)
-  }
-  
-  if (any(c("return_maxima", "return_minima") %in% names(list(...)))) {
-    stop("return_maxima and return_minima cannot be changed in first_peak, 
-please use find_local_extrema for more flexibility")
-  }
-  
-  return(find_local_extrema(y = y, x = x,
-                            return_maxima = TRUE,
-                            return_minima = FALSE,
-                            return_endpoints = return_endpoints,
-                            window_width = window_width,
-                            window_width_n = window_width_n,
-                            window_height = window_height,
-                            return = return, ...)[1])
+  #First deprecated in v1.1.0.9000
+  .Deprecated("first_maxima")
+  return(first_maxima(y = y, x = x, window_width = window_width,
+                      window_width_n = window_width_n,
+                      window_height = window_height,
+                      return = return, return_endpoints = return_endpoints,
+                      ...))
 }
 
-#' Find all points when a numeric vector crosses some threshold
-#' 
-#' This function takes a vector of \code{y} values and 
-#' returns the index or x value of every point where the \code{y} values
-#' cross some threshold y value.
-#' 
-#' @param y Numeric vector of y values in which to identify threshold
-#'          crossing events
-#' @param x Optional numeric vector of corresponding x values
-#' @param threshold Threshold y value of interest
-#' @param return One of \code{c("index", "x")}, determining whether the function
-#'               will return the \code{index} or \code{x} value associated with the
-#'               threshold-crossing event.
-#'               
-#'               If \code{index}, it will refer to the data point immediately after
-#'               the crossing event.
-#'               
-#'               If \code{x}, it will use linear interpolation and the data
-#'               points immediately before and after the threshold-crossing
-#'               to return the exact \code{x} value when the threshold crossing
-#'               occurred
-#' @param subset A vector of Boolean values indicating which x and y values
-#'               should be included (TRUE) or excluded (FALSE).
-#'               
-#'               If \code{return = "index"}, index will be for the whole 
-#'               vector and not the subset of the vector
-#' @param return_rising Boolean for whether crossing events where \code{y}
-#'                      rises above \code{threshold} should be returned
-#' @param return_falling Boolean for whether crossing events where \code{y}
-#'                      falls below \code{threshold} should be returned
-#' @param return_endpoints Boolean for whether startpoint should be returned
-#'                      when the startpoint is above \code{threshold} and
-#'                      \code{return_rising = TRUE}, or when the startpoint is
-#'                      below \code{threshold} and \code{return_falling = TRUE}
-#' @param na.rm Boolean whether NA's should be removed before analyzing.
-#'              If \code{return = 'index'}, indices will refer to the original
-#'              \code{y} vector *including* \code{NA} values
-#' @return A vector of indices (\code{return = "index"}) or x values
-#'         (\code{return = "x"}) for when \code{y} crossed \code{threshold}
-#'                    
-#' @export    
-find_threshold_crosses <- function(y, x = NULL, threshold,
-                                   return = "index",
-                                   return_rising = TRUE, return_falling = TRUE,
-                                   return_endpoints = TRUE,  
-                                   subset = NULL, na.rm = TRUE) {
-  if (!return %in% c("x", "index")) {
-    stop('return must be "x" or "index"')
-  }
-  if(!is.null(x) & length(x) != length(y)) {
-    stop("x and y must be the same length")
-  }
-  if(return == "x" & is.null(x)) {stop("return = 'x' but x is not provided")}
-  
-  #Numeric checks/coercion
-  if(!canbe.numeric(y)) {stop("y must be numeric")
-  } else {y <- as.numeric(y)}
-  if(!is.null(x)) {
-    if(!canbe.numeric(x)) {stop("x must be numeric")
-    } else {x <- as.numeric(x)}
-  }
-  
-  #Take subset
-  if(!is.null(subset)) {
-    if(length(subset) != length(y)) {stop("subset and y must be the same length")}
-    if(!all(is.logical(subset))) {stop("subset must be vector of logical values")}
-    indices <- which(subset)
-    if(!is.null(x)) {x <- x[indices]}
-    y <- y[indices]
-  } else {indices <- 1:length(y)}
-  
-  #remove nas
-  narm_temp <- rm_nas(x = x, y = y, na.rm = na.rm, stopifNA = TRUE)
-  
-  #reorder
-  order_temp <- reorder_xy(x = narm_temp[["x"]], y = narm_temp[["y"]])
-  
-  #Save to temp vars
-  x <- order_temp[["x"]]
-  y <- order_temp[["y"]]
-  
-  #Check startpoint
-  out_idx <- NULL
-  if(return_endpoints) {
-    if(return_rising & y[1] >= threshold) {out_idx <- c(out_idx, 1)}
-    if(return_falling & y[1] <= threshold) {out_idx <- c(out_idx, 1)}
-  }
-  
-  #Find indices of crossing events
-  # (saving the index of the value *before* the cross has happened)
-  if(return_rising) {
-    out_idx <- c(out_idx, 1+which(y[2:length(y)] > threshold &
-                                  y[1:(length(y)-1)] <= threshold))
-  }
-  if(return_falling) {
-    out_idx <- c(out_idx, 1+which(y[2:length(y)] < threshold &
-                                  y[1:(length(y)-1)] >= threshold))
-  }
-  
-  if(length(out_idx) == 0) {out_idx <- NA
-  } else {out_idx <- out_idx[order(out_idx)]}
-  
-  if(return == "index") {
-    #return to original order
-    out_idx <- order_temp[["order"]][out_idx]
-    
-    #Change indices to account for NA's removed
-    for (index in narm_temp$nas_indices_removed) {
-      out_idx[out_idx >= index] <- (out_idx[out_idx >= index] + 1)
-    }
-  
-    #Change indices to account for subset being used
-    out_idx <- indices[out_idx]
-    
-    return(out_idx[order(out_idx)])
-    
-  } else { #return = "x"
-    #To do linear interpolation when the first point is included, 
-    # we add a buffer value at the beginning of x and y that is a duplicate 
-    # of x[1] and y[1] and add 1 to all the indices to reflect that addition
-    x <- c(x[1], x)
-    y <- c(y[1], y)
-    out_idx <- out_idx + 1
-    
-    #Use linear interpolation to determine exact x values of crossing events
-    x1 <- x[(out_idx-1)]
-    x3 <- x[out_idx]
-    y1 <- y[(out_idx-1)]
-    y3 <- y[out_idx]
-    y2 <- threshold
-    
-    x2 <- (y2-y1)*(x3-x1)/(y3-y1) + x1
-    return(x2)
-  }
-}
-
-#' Find the first point when a numeric vector falls below some threshold
-#' 
-#' This function takes a vector of \code{y} values and 
-#' returns the index (by default) of the first point that falls
-#' below some threshold y value. This function is essentially a wrapper for 
-#' \code{find_threshold_crosses(return_rising = FALSE, return_falling = TRUE)[1]}
-#' 
-#' @param y Numeric vector of y values in which to identify first below point
-#' @param x Optional numeric vector of corresponding x values
-#' @param threshold Threshold y value of interest
-#' @param return One of \code{c("index", "x")}, determining whether the function
-#'               will return the \code{index} or \code{x} value associated with 
-#'               the first-below point.
-#'               
-#'               If \code{index}, it will refer to the first data point
-#'               below the threshold.
-#'               
-#'               If \code{x}, it will use linear interpolation and the data
-#'               points immediately before and after the threshold-crossing
-#'               to return the exact \code{x} value when \code{y} first
-#'               came below \code{threshold}
-#' @param return_endpoints Boolean for whether startpoint should be returned
-#'                      when the startpoint is below \code{threshold}
-#' @param subset A vector of Boolean values indicating which x and y values
-#'               should be included (TRUE) or excluded (FALSE).
-#'               
-#'               If \code{return = "index"}, index will be for the whole 
-#'               vector and not the subset of the vector
-#' @param na.rm Boolean whether NA's should be removed before analyzing.
-#'              If \code{return = 'index'}, indices will refer to the original
-#'              \code{y} vector *including* \code{NA} values
-#' @param ... Other arguments to pass to \code{find_threshold_crosses}
-#' @return A vector of indices (\code{return = "index"}) or x values
-#'         (\code{return = "x"}) for when \code{y} crossed \code{threshold}
-#'         
-#' @details 
-#' This function is designed to be compatible for use within
-#'  dplyr::group_by and dplyr::summarize
-#'                    
-#' @export    
-first_below <- function(y, x = NULL, threshold, 
-                        return = "index", return_endpoints = TRUE,
-                        subset = NULL, na.rm = TRUE, ...) {
-  if(any(c("return_rising", "return_falling") %in% names(list(...)))) {
-    stop("return_rising and return_falling cannot be changed in first_below,
-please use find_threshold_crosses for more flexibility")
-  }
-  return(find_threshold_crosses(y = y, x = x,
-                                threshold = threshold,
-                                return = return, subset = subset,
-                                return_endpoints = return_endpoints,
-                                return_rising = FALSE,
-                                return_falling = TRUE,
-                                na.rm = na.rm, ...)[1])
-}
-
-#' calculate area under the curve
-#' 
-#' This function takes a vector of \code{x} and \code{y} values
-#' and returns a scalar for the area under the curve, calculated using 
-#' the trapezoid rule
-#'  
-#' @param x Numeric vector of x values
-#' @param y Numeric vector of y values
-#' @param xlim Vector, of length 2, delimiting the x range over which the
-#'             area under the curve should be calculated (where NA can be
-#'             provided for the area to be calculated from the start or to
-#'             the end of the data)
-#' @param na.rm a logical indicating whether missing values should be removed
-#' 
-#' @details 
-#' This function is designed to be compatible for use within
-#'  dplyr::group_by and dplyr::summarize
-#'
-#' @return A scalar for the total area under the curve
-#'             
-#' @export
-auc <- function(x, y, xlim = NULL, na.rm = TRUE) {
-  if(!na.rm & any(c(is.na(x), is.na(y)))) {
-    stop("na.rm = FALSE but x or y contain NA's")
-  }
-  if(!is.vector(x)) {
-    stop(paste("x is not a vector, it is class:", class(x)))
-  }
-  if(!is.vector(y)) {
-    stop(paste("y is not a vector, it is class:", class(y)))
-  }
-  
-  if(!is.numeric(x)) {
-    if(!canbe.numeric(x)) {stop("x cannot be coerced to numeric")
-    } else {
-      x <- as.numeric(x)
-    }
-  }
-  if(!is.numeric(y)) {
-    if(!canbe.numeric(y)) {stop("y cannot be coerced to numeric")
-    } else {
-      y <- as.numeric(y)
-    }
-  }
-
-  to_keep <- which(!(is.na(x) | is.na(y)))
-  x <- x[to_keep]
-  y <- y[to_keep]
-  stopifnot(order(x) == 1:length(x),
-            length(x) > 1, length(y) > 1)
-  
-  #Check if xlim has been specified
-  if(!is.null(xlim)) {
-    stopifnot(is.vector(xlim), length(xlim) == 2, any(!is.na(xlim)))
-    if(is.na(xlim[1])) {xlim[1] <- x[1]}
-    if(is.na(xlim[2])) {xlim[2] <- x[length(x)]}
-    if(xlim[1] < x[1]) {
-      warning("xlim specifies lower limit below the range of x\n")
-      xlim[1] <- x[1]
-    } else { #add lower xlim to the x vector and the interpolated y to y vector
-      if (!(xlim[1] %in% x)) {
-        xndx <- max(which(xlim[1] > x))
-        slp <- (y[xndx] - y[xndx+1])/(x[xndx] - x[xndx+1])
-        x <- c(x, xlim[1])
-        #interpolated_y = m * interpolation_x + b
-        #   m = (y_1 - y_2)/(x_1 - x_2)
-        #   b = y_1 - x_1 * m
-        y <- c(y, xlim[1]*slp + y[xndx] - x[xndx]*slp)
-        y <- y[order(x)]
-        x <- x[order(x)]
-      }
-    }
-       
-    if(xlim[2] > x[length(x)]) {
-      warning("xlim specifies upper limit above the range of x\n")
-      xlim[2] <- x[length(x)]
-    } else { #add upper xlim to the x vector and the interpolated y to y vector
-      if (!(xlim[2] %in% x)) {
-        xndx <- max(which(xlim[2] > x))
-        slp <- (y[xndx] - y[xndx+1])/(x[xndx] - x[xndx+1])
-        x <- c(x, xlim[2])
-        #interpolated_y = m * interpolation_x + b
-        #   m = (y_1 - y_2)/(x_1 - x_2)
-        #   b = y_1 - x_1 * m
-        y <- c(y, xlim[2]*slp + y[xndx] - x[xndx]*slp)
-        y <- y[order(x)]
-        x <- x[order(x)]
-      }
-    }
-    y <- y[(x >= xlim[1]) & (x <= xlim[2])]
-    x <- x[(x >= xlim[1]) & (x <= xlim[2])]
-  }
-  
-  #Calculate auc
-  # area = 0.5 * (y1 + y2) * (x2 - x1)
-  return(sum(0.5 * 
-               (y[1:(length(y)-1)] + y[2:length(y)]) *
-               (x[2:length(x)] - x[1:(length(x)-1)])))
-}
-
-
-# Legacy Code ----
 
 #' Make tidy design data.frames
 #' 
@@ -3970,7 +3788,7 @@ auc <- function(x, y, xlim = NULL, na.rm = TRUE) {
 #'               This pattern will be split using pattern_split, which
 #'               defaults to every character
 #'               
-#'              5. a Boolean for whether this pattern should be filled byrow
+#'              5. a logical for whether this pattern should be filled byrow
 #'              
 #' @return a tidy-shaped \code{data.frame} containing all the design elements
 #' 

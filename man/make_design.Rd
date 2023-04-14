@@ -72,7 +72,8 @@ table will now be c(A,B,...Y,Z,a,b,...,y,z)}
 \item{pattern_split}{character to split pattern elements provided in
 \code{...} by, if they're not already a vector}
 
-\item{...}{Each \code{...} argument must be a list with five elements:
+\item{...}{Each \code{...} argument must be named, and must be a list with 
+           five elements:
 
              1. a vector of the values
              
@@ -86,9 +87,10 @@ table will now be c(A,B,...Y,Z,a,b,...,y,z)}
                 If it's a string, will be split by \code{pattern_split}.
                 Pattern will be used as the indices of the values vector.
               
-                0's refer to NA
+                0's refer to NA. The pattern will be recycled as necessary
+                to fill all the wells of the rows and columns specified.
               
-             5. a Boolean for whether this pattern should be filled byrow}
+             5. a logical for whether this pattern should be filled byrow}
 }
 \value{
 Depends on \code{output_format}:
