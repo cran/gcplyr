@@ -17,6 +17,22 @@
 
 # Utility functions ----
 
+#' Nicely print the contents of a data.frame
+#' 
+#' This function uses \code{write.table} to print the input \code{data.frame}
+#' in a nicely-formatted manner that is easy to read
+#' 
+#' @param x The \code{data.frame} to be printed
+#' @param col.names Boolean for whether column names should be printed
+#' @param row.names Boolean for whether row names should be printed
+#' 
+#' @export
+print_df <- function(x, col.names = FALSE, row.names = FALSE) {
+  utils::write.table(format(x, justify = "right"),
+              row.names = row.names, col.names = col.names, quote = F)
+}
+
+
 #' Check dimension of inputs
 #' 
 #' Check if values are a vector of given length, if not coerce to be so
@@ -46,10 +62,11 @@ checkdim_inputs <- function(input, input_name, needed_len,
 #' Uninterleave list
 #' 
 #' Takes a list that is actually interleaved elements from multiple sources
-#' and uninterleaves them into the separate sources
-#' For instance, a list of blockmeasures that actually corresponds to two
-#' different plates can be split into two lists, each of the blockmeasures
-#' corresponding to a single plate
+#' and uninterleaves them into the separate sources. For instance, a list of 
+#' blockmeasures that actually corresponds to two different plates can be 
+#' split into two lists, each of the blockmeasures corresponding to a single 
+#' plate. Uninterleave assumes that the desired sub-groups are perfectly
+#' interleaved in the input (e.g. items belong to sub-groups 1,2,3,1,2,3,...)
 #' 
 #' @param interleaved_list A list of R objects
 #' @param n How many output sub lists there should be (i.e. how many groups
@@ -158,6 +175,22 @@ dots_parser <- function(FUN, ...) {
   argnames <- names(formals(FUN))
   dots <- list(...)
   return(do.call(FUN, dots[names(dots) %in% argnames]))
+}
+
+#' A function that checks if an argument was speicified in \code{...}: if it was,
+#' returns the value of that argument as specified in \code{...}, if not, returns
+#' a default value
+#' 
+#' @param argname The name of the argument
+#' @param default The value for the argument if not specified in the \code{...}
+#' @param ... The \code{...} arguments
+#' 
+#' @return The value for argname, either the default or as-specified in \code{...}
+#' 
+#' @noRd
+dots_checker <- function(argname, default, ...) {
+  if(!argname %in% names(list(...))) {return(default)
+  } else {return(list(...)[[argname]])}
 }
 
 #' A function that infers whether blocks have nested metadata

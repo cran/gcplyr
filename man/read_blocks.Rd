@@ -14,6 +14,7 @@ read_blocks(
   sheet = NULL,
   metadata = NULL,
   block_names = NULL,
+  block_name_header = "block_name",
   header = NA,
   sider = NA,
   wellnames_numeric = FALSE,
@@ -67,6 +68,9 @@ when reading multiple blocks from a single file.)}
 in \code{files}. If not provided, block_names are inferred
 from the filenames}
 
+\item{block_name_header}{The name of the metadata field containing the
+\code{block_names}}
+
 \item{header}{\code{TRUE}, \code{FALSE}, or \code{NA}, or a vector of
 such values, indicating whether the file(s) contains the
 column names as its first line. If \code{header = NA}
@@ -77,7 +81,7 @@ automatically according to \code{wellnames_numeric}}
 
 \item{sider}{\code{TRUE}, \code{FALSE}, or \code{NA}, or a vector of
 such values, indicating whether the file(s) contains the
-row names as its first line. If \code{sider = NA}
+row names as its first column. If \code{sider = NA}
 will attempt to infer the presence of row names. If
 \code{sider = FALSE} or no row names are inferred when 
 \code{sider = NA}, row names will be generated

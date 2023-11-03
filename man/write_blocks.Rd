@@ -9,9 +9,11 @@ write_blocks(
   file,
   output_format = "multiple",
   block_name_location = NULL,
+  block_name_header = "block_name",
   paste_sep = "_",
   filename_sep = "_",
   na = "",
+  dir = NULL,
   ...
 )
 }
@@ -64,6 +66,9 @@ write_blocks(
                           If 'file', the \code{block_name} metadata will be
                           included as a row in the output file.}
 
+\item{block_name_header}{The name of the field containing the
+\code{block_names}}
+
 \item{paste_sep}{When \code{output_format = 'pasted'}, what character
 will be used to paste together blocks.}
 
@@ -71,6 +76,10 @@ will be used to paste together blocks.}
 filenames when block_name_location = 'filename'.}
 
 \item{na}{The string to use for missing values in the data.}
+
+\item{dir}{The directory that file(s) will be written into. When 
+\code{dir = NULL}, writes to the current working directory.
+(Can only be used when \code{file = NULL})}
 
 \item{...}{Other arguments passed to \code{write.table}}
 }
