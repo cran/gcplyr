@@ -206,6 +206,9 @@ example_design <- make_design(
 head(example_design, 20)
 
 ## -----------------------------------------------------------------------------
+head(example_design_tidy)
+
+## -----------------------------------------------------------------------------
 ex_dat_mrg <- merge_dfs(example_tidydata, example_design)
 
 head(ex_dat_mrg)

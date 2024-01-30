@@ -9,7 +9,7 @@ You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-da
 
 <!-- badges: start -->
 
-[![packageversion](https://img.shields.io/badge/Github-1.7.1-blue.svg?style=flat&logo=github)](https://github.com/mikeblazanin/gcplyr/commits/master)
+[![packageversion](https://img.shields.io/badge/Github-1.8.0-blue.svg?style=flat&logo=github)](https://github.com/mikeblazanin/gcplyr/commits/master)
 [![CRAN
 status](https://www.r-pkg.org/badges/version/gcplyr)](https://CRAN.R-project.org/package=gcplyr)
 [![License:
@@ -70,9 +70,9 @@ This documentation is also available as a series of pdf vignette files:
 
 1.  [Introduction](https://github.com/mikeblazanin/gcplyr/blob/master/vignettes/gc01_gcplyr.pdf)
 2.  [Importing and transforming
-    data](https://github.com/mikeblazanin/gcplyr/blob/master/vignettes/gc02_import_transform.pdf)
-3.  [Incorporating design
-    information](https://github.com/mikeblazanin/gcplyr/blob/master/vignettes/gc03_incorporate_designs.pdf)
+    data](https://github.com/mikeblazanin/gcplyr/blob/master/vignettes/gc02_import_reshape.pdf)
+3.  [Incorporating experimental
+    designs](https://github.com/mikeblazanin/gcplyr/blob/master/vignettes/gc03_incorporate_designs.pdf)
 4.  [Pre-processing and plotting
     data](https://github.com/mikeblazanin/gcplyr/blob/master/vignettes/gc04_preprocess_plot.pdf)
 5.  [Processing

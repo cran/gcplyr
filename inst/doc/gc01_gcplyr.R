@@ -67,19 +67,29 @@ data_merged <- mutate(
   percap_deriv = calc_deriv(y = Measurements, x = Time, percapita = TRUE, 
                             blank = 0, window_width_n = 5))
 
-# Calculate two common metrics of bacterial growth:
+# Calculate four common metrics of bacterial growth:
+#  the lag time, saving it to a column named lag_time
 #  the maximum growth rate, saving it to a column named max_percap
+#  the maximum density, saving it to a column named max_dens
 #  the area-under-the-curve, saving it to a column named 'auc'
 data_sum <- summarize(
   group_by(data_merged, Well, Bacteria_strain, Phage),
+  lag_time = lag_time(x = Time, y = Measurements, deriv = percap_deriv),
   max_percap = max(percap_deriv, na.rm = TRUE),
+  max_dens = max(Measurements),
   auc = auc(y = Measurements, x = as.numeric(Time)))
 
-# Print some of the max growth rates and auc's
+# Print some of the values
 head(data_sum)
 
-# Plot the results for max growth rate and area under the curve
+# Plot the results for each of the metrics
+ggplot(data = data_sum, aes(x = lag_time)) +
+  geom_histogram()
+
 ggplot(data = data_sum, aes(x = max_percap)) +
+  geom_histogram()
+
+ggplot(data = data_sum, aes(x = max_dens)) +
   geom_histogram()
 
 ggplot(data = data_sum, aes(x = auc)) +

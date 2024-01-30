@@ -45,10 +45,12 @@ print_df <- function(x, col.names = FALSE, row.names = FALSE) {
 #' @return The values of \code{input} coerced to a vector of length \code{needed_len}
 #' 
 #' @noRd
-checkdim_inputs <- function(input, input_name, needed_len,
+check_input_dimensions <- function(input, input_name, needed_len,
                             needed_name = "the number of files") {
   if (length(input) != needed_len) {
-    if(length(input) != 1) {
+    if(length(input) == 0) {
+      stop(paste0("length(", input_name, ") is 0"))
+    } else if(length(input) != 1) {
       stop(paste("More than one", input_name, "value is supplied, but the number
                    of", input_name, "values is not equal to", needed_name))
     } else {
@@ -118,9 +120,9 @@ to_excel <- function(x) {
     val <- x[i]
     chars <- c()
     while(val > 0) {
-      temp <- divisor_modulo_excel(val)
-      val <- temp[1]
-      rem <- temp[2]
+      divisor_modulo_excel_output <- divisor_modulo_excel(val)
+      val <- divisor_modulo_excel_output[1]
+      rem <- divisor_modulo_excel_output[2]
       chars <- c(LETTERS[rem], chars)
     }
     out <- c(out, paste(chars, collapse = ""))
@@ -145,9 +147,9 @@ from_excel <- function(x) {
   x_splt <- strsplit(x[not_nums], "")
   for (i in 1:length(x_splt)) {
     #Get indices of letters
-    temp <- match(x_splt[[i]], LETTERS)
+    letter_indices <- match(x_splt[[i]], LETTERS)
     #Multiply indices by powers of 26
-    out[not_nums[i]] <- sum(temp*26**((length(temp)-1):0))
+    out[not_nums[i]] <- sum(letter_indices*26**((length(letter_indices)-1):0))
   }
   if(any(is.na(out))) {
     stop(paste("Failed to convert from Excel-format:",
@@ -161,18 +163,21 @@ from_excel <- function(x) {
 #' Use this in cases where a parent function calls multiple sub-functions
 #' and passes the ... dots argument to each, but some arguments users
 #' specify in the ... dots argument only work for some of the sub-functions.
-#' In this case, dots_parser will check and run \code{FUN} with only
+#' In this case, parse_dots will check and run \code{FUN} with only
 #' the arguments that \code{FUN} accepts
 #' 
 #' @param FUN The function to be called
+#' @param SUBFUN A subfunction called by \code{FUN}, so all arguments for
+#'               the subfunction should be passed to \code{FUN}
 #' @param ... Additional arguments, some of which may not be arguments
 #'            for \code{FUN}
 #' 
 #' @return The output of \code{FUN} operating on arguments in \code{...}
 #' 
 #' @noRd
-dots_parser <- function(FUN, ...) {
+parse_dots <- function(FUN, SUBFUN = NULL, ...) {
   argnames <- names(formals(FUN))
+  if(!is.null(SUBFUN)) {argnames <- c(argnames, names(formals(SUBFUN)))}
   dots <- list(...)
   return(do.call(FUN, dots[names(dots) %in% argnames]))
 }
@@ -188,7 +193,7 @@ dots_parser <- function(FUN, ...) {
 #' @return The value for argname, either the default or as-specified in \code{...}
 #' 
 #' @noRd
-dots_checker <- function(argname, default, ...) {
+check_dots <- function(argname, default, ...) {
   if(!argname %in% names(list(...))) {return(default)
   } else {return(list(...)[[argname]])}
 }
@@ -466,13 +471,13 @@ get_windows <- function(x, y, window_width_n = NULL, window_width = NULL,
   window_ends <- matrix(data = length(x), nrow = length(x), ncol = 3)
   
   if(!is.null(window_width_n)) {
-    temp <- 
+    candidate_window_edges <- 
       lapply(X = as.list(1:length(x)),
              xvals = x,
              FUN = function(xidx, xvals) {
                which(abs(xidx - 1:length(xvals)) <= (window_width_n - 1)/2)})
-    window_starts[, 1] <- sapply(temp, min)
-    window_ends[, 1] <- sapply(temp, max)
+    window_starts[, 1] <- sapply(candidate_window_edges, min)
+    window_ends[, 1] <- sapply(candidate_window_edges, max)
     if(edge_NA) {
       window_starts[(1:length(x) + (window_width_n - 1)/2 >= length(x)+1) |
                       (1:length(x) - (window_width_n - 1)/2 <= 0), 1] <- NA
@@ -481,12 +486,12 @@ get_windows <- function(x, y, window_width_n = NULL, window_width = NULL,
     }
   }
   if(!is.null(window_width)) {
-    temp <- lapply(X = as.list(1:length(x)),
+    candidate_window_edges <- lapply(X = as.list(1:length(x)),
                    xvals = x,
                    FUN = function(xidx, xvals) {
                      which(abs(xvals - xvals[xidx]) <= window_width/2)})
-    window_starts[, 2] <- sapply(temp, min)
-    window_ends[, 2] <- sapply(temp, max)
+    window_starts[, 2] <- sapply(candidate_window_edges, min)
+    window_ends[, 2] <- sapply(candidate_window_edges, max)
     if(edge_NA) {
       window_starts[(x + window_width/2 > max(x)) |
                       (x - window_width/2 < min(x)), 2] <- NA
@@ -578,7 +583,7 @@ check_grouped <- function(func_name = "mutate", inherit_name = "grouped_df",
 #' I didn't write this, see: https://stackoverflow.com/a/24569739/14805829
 #' 
 #' @noRd
-myTryCatch <- function(expr) {
+gcTryCatch <- function(expr) {
   warn <- err <- NULL
   value <- withCallingHandlers(
     tryCatch(expr, error=function(e) {
@@ -754,7 +759,7 @@ NULL
 #' @rdname MinMaxGC
 #' @export 
 max_gc <- function(..., na.rm = TRUE, allmissing_NA = TRUE) {
-  caught_log <- myTryCatch(max(..., na.rm = na.rm))
+  caught_log <- gcTryCatch(max(..., na.rm = na.rm))
   if(!is.null(caught_log$error)) {stop(caught_log$error)}
   if(!is.null(caught_log$warning)) {
     if(grepl("no non-missing arguments", caught_log$warning)) {
@@ -768,7 +773,7 @@ max_gc <- function(..., na.rm = TRUE, allmissing_NA = TRUE) {
 #' @rdname MinMaxGC
 #' @export 
 min_gc <- function(..., na.rm = TRUE, allmissing_NA = TRUE) {
-  caught_log <- myTryCatch(min(..., na.rm = na.rm))
+  caught_log <- gcTryCatch(min(..., na.rm = na.rm))
   if(!is.null(caught_log$error)) {stop(caught_log$error)}
   if(!is.null(caught_log$warning)) {
     if(grepl("no non-missing arguments", caught_log$warning)) {
@@ -807,7 +812,47 @@ extr_val <- function(x, i, allNA_NA = TRUE, na.rm = TRUE) {
   if(allNA_NA ==  TRUE && all(is.na(i))) {
     return(NA)
   } else {
-    i <- i[!is.na(i)]
+    x <- x[!is.na(x)]
     return(x[i])
+  }
+}
+
+#' A function that takes a subset of x and y
+#' 
+#' Vectors will have all values removed where subset is FALSE or NA
+#' 
+#' @param x,y Vector to remove values from.
+#' @param subset logical, TRUE values are kept
+#' @return A list containing: x and y with values removed
+#'                            the original indices of the retained values
+#'                            that were returned, such that the original index
+#'                            of the ith value in the returned vector is
+#'                            indices[i]
+#'                            
+#' @noRd
+take_subset <- function(x = NULL, y = NULL, subset = NULL) {
+  if(!is.null(x) && !is.null(y) && length(x) != length(y)) {
+    stop("x and y must be the same length")}
+  if(!is.null(subset) && (!is.null(x) | !is.null(y))) {
+    if(!is.null(y) && length(subset) != length(y)) {
+      stop("subset and y must be the same length")}
+    if(!is.null(x) && length(subset) != length(x)) {
+      stop("subset and x must be the same length")}
+    if(!all(is.logical(subset))) {
+      stop("subset must be a vector of logical values")}
+    if(any(is.na(subset))) {
+      warning("subset contains NA's, treating NA's as FALSE")
+      subset[is.na(subset)] <- FALSE
+    }
+    indices <- which(subset)
+    if(!is.null(x)) {x <- x[indices]}
+    if(!is.null(y)) {y <- y[indices]}
+    return(list(x = x, y = y, indices = indices))
+    
+  } else {
+    if(!is.null(x)) {indices <- 1:length(x)
+    } else if (!is.null(y)) {indices <- 1:length(y)
+    } else {indices <- NULL}
+    return(list(x = x, y = y, indices = indices))
   }
 }

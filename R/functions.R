@@ -53,14 +53,14 @@ infer_names <- function(df,
     if (is.na(sider)) {
       #This is just a way to check if the top-left cell is empty
       # and if so then we'll use the first row/col as rownames/colnames
-      temp <- c(startrow, startcol)
-      temp[is.na(temp)] <- 1
-      if (df[temp[1], temp[2]] == "" | is.na(df[temp[1], temp[2]])) {
-        output$rownames_col <- temp[2]
-        output$startcol <- temp[2] + 1
+      srsc_vec <- c(startrow, startcol)
+      srsc_vec[is.na(srsc_vec)] <- 1
+      if (df[srsc_vec[1], srsc_vec[2]] == "" | is.na(df[srsc_vec[1], srsc_vec[2]])) {
+        output$rownames_col <- srsc_vec[2]
+        output$startcol <- srsc_vec[2] + 1
       } else {
         output$rownames_col <- 0
-        output$startcol <- temp[2]
+        output$startcol <- srsc_vec[2]
       }
     }
   }
@@ -76,30 +76,30 @@ infer_names <- function(df,
     if (is.na(header)) {
       #This is just a way to check if the top-left cell is empty
       # and if so then we'll use the first row/col as rownames/colnames
-      temp <- c(startrow, startcol)
-      temp[is.na(temp)] <- 1
-      if (df[temp[1], temp[2]] == "" | is.na(df[temp[1], temp[2]])) {
-        output$colnames_row <- temp[1]
-        output$startrow <- temp[1] + 1
+      srsc_vec <- c(startrow, startcol)
+      srsc_vec[is.na(srsc_vec)] <- 1
+      if (df[srsc_vec[1], srsc_vec[2]] == "" | is.na(df[srsc_vec[1], srsc_vec[2]])) {
+        output$colnames_row <- srsc_vec[1]
+        output$startrow <- srsc_vec[1] + 1
       } else {
         output$colnames_row <- 0
-        output$startrow <- temp[1]
+        output$startrow <- srsc_vec[1]
       }
     }
   }
   if (is.na(header) & is.na(sider)) {
-    temp <- c(startrow, startcol)
-    temp[is.na(temp)] <- 1
-    if (df[temp[1], temp[2]] == "" | is.na(df[temp[1], temp[2]])) {
-      output$colnames_row <- temp[1]
-      output$startrow <- temp[1] + 1
-      output$rownames_col <- temp[2]
-      output$startcol <- temp[2] + 1
+    srsc_vec <- c(startrow, startcol)
+    srsc_vec[is.na(srsc_vec)] <- 1
+    if (df[srsc_vec[1], srsc_vec[2]] == "" | is.na(df[srsc_vec[1], srsc_vec[2]])) {
+      output$colnames_row <- srsc_vec[1]
+      output$startrow <- srsc_vec[1] + 1
+      output$rownames_col <- srsc_vec[2]
+      output$startcol <- srsc_vec[2] + 1
     } else {
       output$colnames_row <- 0
-      output$startrow <- temp[1]
+      output$startrow <- srsc_vec[1]
       output$rownames_col <- 0
-      output$startcol <- temp[2]
+      output$startcol <- srsc_vec[2]
     }
   }
   
@@ -112,10 +112,75 @@ infer_names <- function(df,
 }
 
 
+#' An internal function that handles checking and inferring (from extension) filetypes
+#' 
+#' @param filetype The vector of filetypes (often extensions) or NULL
+#' @param files The vector of filenames/paths
+#' @param needed_len Parameter to pass to \code{check_input_dimensions} for
+#'                   desired length of output vector
+#' @param needed_name Parameter to pass to \code{check_input_dimensions} for
+#'                    name of desired length for error message
+#' @param ... Other arguments to pass to \code{check_input_dimensions}, most
+#'            frequently \code{needed_name} for what the desired length 
+#'            corresponds to (e.g. number of files)
+#' 
+#' @return vector of filetypes
+#' 
+#' @noRd
+infer_check_filetype <- function(filetype, files, needed_len, needed_name, ...) {
+  valid_exts <- c("tbl", "table", "csv", "csv2", 
+                  "delim", "delim2", "xls", "xlsx")
+  
+  #Determine filetype(s)
+  if (is.null(filetype)) {
+    filetype <- vapply(files, tools::file_ext, FUN.VALUE = "return strings", 
+                        USE.NAMES = FALSE)
+    if(any(!filetype %in% valid_exts)) {
+      warning("filetype inferred but not one of the valid values. Will treat as tbl\n")
+      filetype[!filetype %in% valid_exts] <- "tbl"
+    }
+  } else {
+    filetype <- check_input_dimensions(filetype, "filetype", needed_len, needed_name)
+    if(any(!filetype %in% valid_exts)) {
+      stop("filetype provided by user must be one of the valid values")
+    }
+  }
+  return(filetype)
+}
+
+
+#' An internal function that handles parsing of filestrings for saving
+#' 
+#' @param filestrings The vector of file/path strings
+#' @param keep_dot Should the leading dot and slash be kept and returned
+#' @param keep_path Should the path to the file be kept and returned
+#' @param keep_ext Should the file extension be kept and returned
+#' 
+#' @return Vector of filestrings modified accordingly
+#' 
+#' @noRd
+parse_filestrings <- function(filestrings, keep_dot, keep_path, keep_ext) {
+  #infer the names from filenames
+  for (i in 1:length(filestrings)) {
+    if(!keep_dot) { #strip off the dot and leading slash from the beginning
+      filestrings[i] <- sub("^\\./", "", filestrings[i])
+    }
+    if(!keep_path) { #strip off the path from the beginning
+      filestrings[i] <- sub("(^\\.?/?).*/([^/]*$)", "\\1\\2", filestrings[i])
+    }
+    if(!keep_ext) { #strip off the extension from the end
+      filestrings[i] <- sub("(^.*)\\.[[:alnum:]]+$", "\\1", filestrings[i])
+    }
+  }
+  return(filestrings)
+}
+
 #' An internal function that handles reading a file in table format
 #' 
 #' @param file The filename or path
-#' @param extension The extension of the file, one of 'tbl', 'csv', 'xls', 'xlsx'
+#' @param filetype The type of file, one of:
+#'                 'tbl', 'table', 'csv', 'xls', 'xlsx', 'csv2', 'delim',
+#'                 'delim2'
 #' @param na.strings Strings to be interpreted as \code{NA}
 #' @param sheet What sheet to read (only needed for 'xls' and 'xlsx')
 #' 
@@ -125,51 +190,97 @@ infer_names <- function(df,
 #' @return The \code{data.frame} resulting from reading the file
 #' 
 #' @noRd
-read_gcfile <- function(file, extension, na.strings, sheet = NULL, ...) {
-  if (extension == "tbl") {
+read_gcfile <- function(file, filetype, na.strings, sheet = NULL, ...) {
+  if(any(filetype %in% c("xls", "xlsx")) && 
+     !requireNamespace("readxl", quietly = TRUE)) {
+    stop("Package \"readxl\" must be installed to read xls or xlsx files",
+         call. = FALSE)
+  }
+  
+  if(filetype %in% c("tbl", "table", "csv", "csv2", "delim", "delim2")) {
     if("colClasses" %in% names(list(...))) {
-      warning("specified colClasses is being ignored, read_blocks always uses colClasses = 'character'")}
-    temp <- dots_parser(utils::read.table, file = file,
+      warning("specified colClasses is being ignored, read_gcfile always uses colClasses = 'character'")}
+  } else if (filetype %in% c("xls", "xlsx")) {
+    if("col_types" %in% names(list(...))) {
+      warning("specified col_types is being ignored, read_gcfile always uses col_types = 'text'")}
+  } else {warning("filetype not checked by read_gcfile, report this bug to gcplyr maintainer")}
+  
+  if (filetype == "tbl" | filetype == "table") {
+    readgcfile_temp <- parse_dots(utils::read.table, file = file,
                         na.strings = na.strings, colClasses = "character",
                         ...)
-  } else if (extension == "csv") {
-    #define defaults for csv if user didn't specify them
-    # (this re-creates the behavior of read.csv, but allows that
+  } else if (filetype == "csv") {
+    #define defaults (this re-creates the behavior of read.csv, but allows
     # behavior to be overridden by user if desired)
-    sep <- dots_checker("sep", ",", ...)
-    quote <- dots_checker("quote", "\"", ...)
-    dec <- dots_checker("dec", ".", ...)
-    fill <- dots_checker("fill", TRUE, ...)
-    comment.char <- dots_checker("comment.char", "", ...)
+    sep <- check_dots("sep", ",", ...)
+    quote <- check_dots("quote", "\"", ...)
+    dec <- check_dots("dec", ".", ...)
+    fill <- check_dots("fill", TRUE, ...)
+    comment.char <- check_dots("comment.char", "", ...)
     
-    if("colClasses" %in% names(list(...))) {
-      warning("specified colClasses is being ignored, read_blocks always uses colClasses = 'character'")}
-    
-    temp <- dots_parser(utils::read.table, file = file, 
+    readgcfile_temp <- parse_dots(utils::read.table, file = file, 
                         colClasses = "character", header = FALSE,
                         na.strings = na.strings, sep = sep,
                         quote = quote, dec = dec, fill = fill,
                         comment.char = comment.char, ...)
-  } else if (extension == "xls") {
-    if("col_types" %in% names(list(...))) {
-      warning("specified col_types is being ignored, read_blocks always uses col_types = 'text'")}
+  } else if (filetype == "csv2") {
+    #define defaults (this re-creates the behavior of read.csv2, but allows
+    # behavior to be overridden by user if desired)
+    sep <- check_dots("sep", ";", ...)
+    quote <- check_dots("quote", "\"", ...)
+    dec <- check_dots("dec", ",", ...)
+    fill <- check_dots("fill", TRUE, ...)
+    comment.char <- check_dots("comment.char", "", ...)
+    
+    readgcfile_temp <- parse_dots(utils::read.table, file = file, 
+                        colClasses = "character", header = FALSE,
+                        na.strings = na.strings, sep = sep,
+                        quote = quote, dec = dec, fill = fill,
+                        comment.char = comment.char, ...)
+  } else if (filetype == "delim") {
+    #define defaults (this re-creates the behavior of read.delim, but allows
+    # behavior to be overridden by user if desired)
+    sep <- check_dots("sep", "\t", ...)
+    quote <- check_dots("quote", "\"", ...)
+    dec <- check_dots("dec", ".", ...)
+    fill <- check_dots("fill", TRUE, ...)
+    comment.char <- check_dots("comment.char", "", ...)
+    
+    readgcfile_temp <- parse_dots(utils::read.table, file = file, 
+                        colClasses = "character", header = FALSE,
+                        na.strings = na.strings, sep = sep,
+                        quote = quote, dec = dec, fill = fill,
+                        comment.char = comment.char, ...)
+  } else if (filetype == "delim2") {
+    #define defaults (this re-creates the behavior of read.delim2, but allows
+    # behavior to be overridden by user if desired)
+    sep <- check_dots("sep", "\t", ...)
+    quote <- check_dots("quote", "\"", ...)
+    dec <- check_dots("dec", ",", ...)
+    fill <- check_dots("fill", TRUE, ...)
+    comment.char <- check_dots("comment.char", "", ...)
+    
+    readgcfile_temp <- parse_dots(utils::read.table, file = file, 
+                        colClasses = "character", header = FALSE,
+                        na.strings = na.strings, sep = sep,
+                        quote = quote, dec = dec, fill = fill,
+                        comment.char = comment.char, ...)
+  } else if (filetype == "xls") {
     suppressMessages(
-      temp <- 
+      readgcfile_temp <- 
         as.data.frame(
-          dots_parser(readxl::read_xls, path = file, 
+          parse_dots(readxl::read_xls, path = file, 
                       col_names = FALSE, col_types = "text", 
                       sheet = sheet, na = na.strings, ...)))
-  } else if (extension == "xlsx") {
-    if("col_types" %in% names(list(...))) {
-      warning("specified col_types is being ignored, read_blocks always uses col_types = 'text'")}
+  } else if (filetype == "xlsx") {
     suppressMessages(
-      temp <- 
+      readgcfile_temp <- 
         as.data.frame(
-          dots_parser(readxl::read_xlsx, path = file, 
+          parse_dots(readxl::read_xlsx, path = file, 
                       col_names = FALSE, col_types = "text", 
                       sheet = sheet, na = na.strings, ...)))
-  }
-  return(temp)
+  } else {stop("read_gcfile was passed an invalid filetype")}
+  return(readgcfile_temp)
 }
 
 
@@ -203,12 +314,17 @@ get_metadata <- function(df, row, col) {
 #' 
 #' @param files A vector of filepaths relative to the current working directory
 #'              where each filepath is a single plate read
-#' @param extension (optional) the extension of the files:
-#'                  "csv", "xls", or "xlsx", or "tbl" for use of read.table
+#' @param filetype (optional) the type(s) of the files. Options include:
+#' 
+#'                  "csv", "xls", or "xlsx".
 #'                  
-#'                  If none provided, \code{read_blocks} will infer file extension from
-#'                  provided filenames. When extension is not "csv", "xls", or
-#'                  "xlsx" will use \code{utils::read.table}
+#'                  "tbl" or "table" to use \code{read.table} to read the file,
+#'                  "csv2" to use \code{read.csv2}, "delim" to 
+#'                  use \code{read.delim}, or "delim2" to use \code{read.delim2}.
+#'                  
+#'                  If none provided, \code{read_blocks} will infer filetype(s) 
+#'                  from the extension(s) in \code{files}. When extension is 
+#'                  not "csv", "xls", or "xlsx", will use "table".
 #' @param startrow,endrow,startcol,endcol (optional) the rows and columns where 
 #'                 the measures data are located in \code{files}.
 #'                 
@@ -240,8 +356,14 @@ get_metadata <- function(df, row, col) {
 #' @param block_names (optional) vector of names corresponding to each plate
 #'                 in \code{files}. If not provided, block_names are inferred
 #'                 from the filenames
-#' @param block_name_header The name of the metadata field containing the
+#' @param block_names_header The name of the metadata field containing the
 #'                          \code{block_names}
+#' @param block_names_dot If block_names are inferred from filenames, should 
+#'                        the leading './' (if any) be retained
+#' @param block_names_path If block_names are inferred from filenames, should 
+#'                        the path (if any) be retained
+#' @param block_names_ext If block_names are inferred from filenames, should 
+#'                        the file extension (if any) be retained
 #' @param header   \code{TRUE}, \code{FALSE}, or \code{NA}, or a vector of
 #'                 such values, indicating whether the file(s) contains the
 #'                 column names as its first line. If \code{header = NA}
@@ -270,6 +392,10 @@ get_metadata <- function(df, row, col) {
 #'                   as \code{NA} values by \code{utils::read.csv},
 #'                   \code{readxl::read_xls}, \code{readxl::read_xlsx},
 #'                   or \code{utils::read.table}
+#' @param extension Allowed for backward compatibility; \code{filetype} is
+#'                  now the preferred argument name.
+#' @param block_name_header Allowed for backward compatibility; 
+#'               \code{block_names_header} is now the preferred argument name.
 #' @param ...   Other arguments passed to \code{utils::read.csv},
 #'              \code{readxl::read_xls}, \code{readxl::read_xlsx},
 #'              or \code{utils::read.table}
@@ -311,27 +437,43 @@ get_metadata <- function(df, row, col) {
 #'         provided) and any specified metadata.
 #'
 #' @export     
-read_blocks <- function(files, extension = NULL, 
+read_blocks <- function(files, filetype = NULL, 
                         startrow = NULL, endrow = NULL, 
                         startcol = NULL, endcol = NULL,
                         sheet = NULL, metadata = NULL,
                         block_names = NULL,
-                        block_name_header = "block_name",
+                        block_names_header = "block_name",
+                        block_names_dot = FALSE,
+                        block_names_path = TRUE, block_names_ext = FALSE,
                         header = NA, sider = NA,
                         wellnames_numeric = FALSE,
-                        na.strings = c("NA", ""), ...) {
+                        na.strings = c("NA", ""),
+                        extension, block_name_header,
+                        ...) {
+  
+  if(!base::missing(extension)) {
+    if(!base::missing(filetype)) {
+      warning("Ignoring extension, using filetype")
+    } else {filetype <- extension}
+  }
+  if(!base::missing(block_name_header)) {
+    if(!base::missing(block_names_header)) {
+      warning("Ignoring block_name_header, using block_names_header")
+    } else {block_names_header <- block_name_header}
+  }
+  
   nblocks <- max(length(files), length(startrow), length(endrow),
                  length(startcol), length(endcol), length(sheet),
                  na.rm = TRUE)
   
-  files <- checkdim_inputs(files, "files", nblocks, "the number of blocks")
+  files <- check_input_dimensions(files, "files", nblocks, "the number of blocks")
   
   if(!is.null(startrow) & !all(is.numeric(startrow))) {
     startrow[!is.numeric(startrow)] <- from_excel(startrow[!is.numeric(startrow)])
     startrow <- as.numeric(startrow)
   }
   if(is.null(startrow)) {startrow <- rep(NA, nblocks)} 
-  startrow <- checkdim_inputs(startrow, "startrow", nblocks, 
+  startrow <- check_input_dimensions(startrow, "startrow", nblocks, 
                               "the number of blocks")
   
   if(!is.null(endrow) & !all(is.numeric(endrow))) {
@@ -339,14 +481,14 @@ read_blocks <- function(files, extension = NULL,
     endrow <- as.numeric(endrow)
   }
   if(is.null(endrow)) {endrow <- rep(NA, nblocks)}
-  endrow <- checkdim_inputs(endrow, "endrow", nblocks, "the number of blocks")
+  endrow <- check_input_dimensions(endrow, "endrow", nblocks, "the number of blocks")
   
   if(!is.null(startcol) & !all(is.numeric(startcol))) {
     startcol[!is.numeric(startcol)] <- from_excel(startcol[!is.numeric(startcol)])
     startcol <- as.numeric(startcol)
   }
   if(is.null(startcol)) {startcol <- rep(NA, nblocks)}
-  startcol <- checkdim_inputs(startcol, "startcol", nblocks, 
+  startcol <- check_input_dimensions(startcol, "startcol", nblocks, 
                               "the number of blocks")
   
   if(!is.null(endcol) & !all(is.numeric(endcol))) {
@@ -354,13 +496,13 @@ read_blocks <- function(files, extension = NULL,
     endcol <- as.numeric(endcol)
   }
   if(is.null(endcol)) {endcol <- rep(NA, nblocks)}
-  endcol <- checkdim_inputs(endcol, "endcol", nblocks, "the number of blocks")
+  endcol <- check_input_dimensions(endcol, "endcol", nblocks, "the number of blocks")
   
   if (!is.null(sheet)) {
-    sheet <- checkdim_inputs(sheet, "sheet", nblocks, "the number of blocks")
+    sheet <- check_input_dimensions(sheet, "sheet", nblocks, "the number of blocks")
   }
-  header <- checkdim_inputs(header, "header", nblocks, "the number of blocks")
-  sider <- checkdim_inputs(sider, "sider", nblocks, "the number of blocks")
+  header <- check_input_dimensions(header, "header", nblocks, "the number of blocks")
+  sider <- check_input_dimensions(sider, "sider", nblocks, "the number of blocks")
   
   if (!is.null(block_names) & length(block_names) != nblocks) {
     stop("block_names must be the same length as the number of blocks")
@@ -370,25 +512,10 @@ read_blocks <- function(files, extension = NULL,
     stop("not all metadata have names")
   }
   
-  #Determine file extension(s)
-  if (is.null(extension)) {
-    extension <- vapply(files, tools::file_ext, FUN.VALUE = "return strings", 
-                        USE.NAMES = FALSE)
-    if(any(!extension %in% c("csv", "xls", "xlsx"))) {
-      warning("Extension inferred but not one of: csv, xls, xlsx. Will treat as tbl\n")
-    }
-  } else {
-    extension <- checkdim_inputs(extension, "extension", nblocks, 
-                                 "the number of blocks")
-    if(any(!extension %in% c("csv", "xls", "xlsx", "tbl"))) {
-      stop("Extension provided by user must be one of: csv, xls, xlsx, tbl")
-    }
-  }
-  if(any(extension %in% c("xls", "xlsx")) && 
-     !requireNamespace("readxl", quietly = TRUE)) {
-    stop("Package \"readxl\" must be installed to read xls or xlsx files",
-         call. = FALSE)
-  }
+  #Determine filetype(s)
+  filetype <- infer_check_filetype(
+    filetype = filetype, files = files,
+    needed_len = nblocks, needed_name = "the number of blocks")
   
   #Check metadata for any list entries, if there are and they're not
   # the right length, pass error. Otherwise, replicate as needed
@@ -399,10 +526,10 @@ read_blocks <- function(files, extension = NULL,
       }
       if(is.list(metadata[[i]])) {
         metadata[[i]][[1]] <- 
-          checkdim_inputs(metadata[[i]][[1]], names(metadata)[i],
+          check_input_dimensions(metadata[[i]][[1]], names(metadata)[i],
                           nblocks, "the number of blocks")
         metadata[[i]][[2]] <- 
-          checkdim_inputs(metadata[[i]][[2]], names(metadata)[i],
+          check_input_dimensions(metadata[[i]][[2]], names(metadata)[i],
                           nblocks, "the number of blocks")
       }
     }
@@ -411,11 +538,11 @@ read_blocks <- function(files, extension = NULL,
   #Create empty list for read-in block measures
   if (is.null(metadata)) { #there is no user-specified metadata
     outputs <- rep(list(list("data" = NA, 
-                             "metadata" = stats::setNames("NA", block_name_header))), 
+                             "metadata" = stats::setNames("NA", block_names_header))), 
                    nblocks)
   } else { #there is user-specified metadata
     metadata_vector <- rep(NA, times = length(metadata)+1)
-    names(metadata_vector) <- c(block_name_header, names(metadata))
+    names(metadata_vector) <- c(block_names_header, names(metadata))
     #Okay so the goal here is to have each block measures returned as an item in a big list
     #each item will itself be a named list with 2 things: "data" and "metadata"
     #data is just the dataframe (with colnames & rownames inferred or not)
@@ -429,21 +556,21 @@ read_blocks <- function(files, extension = NULL,
   
   #Import data
   for (i in 1:nblocks) {
-    temp <- read_gcfile(file = files[i], extension = extension[i],
+    rawfile <- read_gcfile(file = files[i], filetype = filetype[i],
                         na.strings = na.strings, sheet = sheet[i], ...)
     
     #Infer rows, cols, rownames, colnames
     inferred_rc <- 
-      infer_names(temp, startrow = startrow[i], endrow = endrow[i],
+      infer_names(rawfile, startrow = startrow[i], endrow = endrow[i],
                   startcol = startcol[i], endcol = endcol[i],
                   header = header[i], sider = sider[i])
     
-    if(inferred_rc$startrow < 1 || inferred_rc$endrow > nrow(temp) ||
-       inferred_rc$startcol < 1 || inferred_rc$endcol > ncol(temp)) {
+    if(inferred_rc$startrow < 1 || inferred_rc$endrow > nrow(rawfile) ||
+       inferred_rc$startcol < 1 || inferred_rc$endcol > ncol(rawfile)) {
       stop("Startrow, startcol, endrow, or endcol are out of range for the file")}
     
     #Save information to outputs
-    outputs[[i]]$data <- temp[inferred_rc$startrow:inferred_rc$endrow,
+    outputs[[i]]$data <- rawfile[inferred_rc$startrow:inferred_rc$endrow,
                               inferred_rc$startcol:inferred_rc$endcol]
     
     #If temp_colnames or temp_rownames haven't been inferred, number them
@@ -452,7 +579,7 @@ read_blocks <- function(files, extension = NULL,
         temp_colnames <- paste0("C", 1:ncol(outputs[[i]]$data))
       } else {temp_colnames <- 1:ncol(outputs[[i]]$data)}
     } else {
-      temp_colnames <- temp[inferred_rc$colnames_row, 
+      temp_colnames <- rawfile[inferred_rc$colnames_row, 
                             inferred_rc$startcol:inferred_rc$endcol]
     }
     if (is.na(inferred_rc$rownames_col)) {
@@ -460,7 +587,7 @@ read_blocks <- function(files, extension = NULL,
         temp_rownames <- paste0("R", 1:nrow(outputs[[i]]$data))
       } else {temp_rownames <- to_excel(1:nrow(outputs[[i]]$data))}
     } else {
-      temp_rownames <- temp[inferred_rc$startrow:inferred_rc$endrow, 
+      temp_rownames <- rawfile[inferred_rc$startrow:inferred_rc$endrow, 
                             inferred_rc$rownames_col]
     }
     
@@ -471,25 +598,25 @@ read_blocks <- function(files, extension = NULL,
     ##Add metadata
     #Add filenames to metadata
     if (!is.null(block_names)) { #block_names were provided
-      outputs[[i]]$metadata[block_name_header] <- block_names[i]
+      outputs[[i]]$metadata[block_names_header] <- block_names[i]
     } else { #block_names were not provided, infer from filename
-      #infer the names from filenames, stripping off the extension from end
-      # and the dot at the beginning (if any)
-      outputs[[i]]$metadata[block_name_header] <- 
-        sub("^\\.?/?(.*)\\.[[:alnum:]]+$", "\\1", files[i])
+      outputs[[i]]$metadata[block_names_header] <- 
+        parse_filestrings(
+          files[i], keep_dot = block_names_dot, 
+          keep_path = block_names_path, keep_ext = block_names_ext)
     }
     #Add user-specified metadata (if any)
     if (!is.null(metadata)) {
       for (j in 1:length(metadata)) {
         if(!is.list(metadata[[j]])) { #metadata item is a vector
           outputs[[i]]$metadata[j+1] <- 
-            get_metadata(df = temp, row = metadata[[j]][1],
+            get_metadata(df = rawfile, row = metadata[[j]][1],
                          col = metadata[[j]][2])
         } else { #metadata item is a list (presumably of two vectors)
           #the first vector is the rows for each ith block
           #the second vector is the columns for each ith block
           outputs[[i]]$metadata[j+1] <- 
-            get_metadata(df = temp, row = metadata[[j]][[1]][i],
+            get_metadata(df = rawfile, row = metadata[[j]][[1]][i],
                          col = metadata[[j]][[2]][i])
         }
       }
@@ -516,18 +643,23 @@ read_blocks <- function(files, extension = NULL,
 #' A function that imports widemeasures in files into the R environment
 #' 
 #' @details
-#' startrow, endrow, startcol, endcol, timecol, sheet and extension 
+#' startrow, endrow, startcol, endcol, timecol, sheet and filetype 
 #' can either be a single value that applies for all files or
 #' vectors or lists the same length as \code{files}, 
 #' 
 #' @param files A vector of filepaths (relative to current working directory)
 #'              where each one is a widemeasures set of data
-#' @param extension (optional) the extension of the files:
-#'                  "csv", "xls", or "xlsx", or "tbl" for use of read.table
+#' @param filetype (optional) the type(s) of the files. Options include:
+#' 
+#'                  "csv", "xls", or "xlsx".
 #'                  
-#'                  If none provided, \code{read_wides} will infer file 
-#'                  extension from provided filenames. When extension is not 
-#'                  "csv", "xls", or "xlsx" will use \code{utils::read.table}
+#'                  "tbl" or "table" to use \code{read.table} to read the file,
+#'                  "csv2" to use \code{read.csv2}, "delim" to 
+#'                  use \code{read.delim}, or "delim2" to use \code{read.delim2}.
+#'                  
+#'                  If none provided, \code{read_wides} will infer filetype(s) 
+#'                  from the extension(s) in \code{files}. When extension is 
+#'                  not "csv", "xls", or "xlsx", will use "table".
 #' @param startrow,endrow,startcol,endcol (optional) the rows and columns where 
 #'                 the data are located in \code{files}.
 #'                 
@@ -548,12 +680,18 @@ read_blocks <- function(files, extension = NULL,
 #'              sheet
 #' @param run_names Names to give the widemeasures read in. By default uses the
 #'                   file names if not specified
-#' @param names_to_col Should the run names (provided in \code{run_names}
-#'                     or inferred from \code{files}) be added as a column to the
-#'                     widemeasures? If \code{names_to_col} is NULL, they will not be.
-#'                     If \code{names_to_col} is a string, that string will be
-#'                     the column header for the column where the names will be
-#'                     stored
+#' @param run_names_header Should the run names (provided in \code{run_names}
+#'                     or inferred from \code{files}) be added as a column to 
+#'                     the widemeasures? If \code{run_names_header} is NULL, 
+#'                     they will not be. If \code{run_names_header} is a string, 
+#'                     that string will be the column header for the column 
+#'                     where the names will be stored
+#' @param run_names_dot If run_names are inferred from filenames, should 
+#'                        the leading './' (if any) be retained
+#' @param run_names_path If run_names are inferred from filenames, should 
+#'                        the path (if any) be retained
+#' @param run_names_ext If run_names are inferred from filenames, should 
+#'                        the file extension (if any) be retained
 #' @param metadata (optional) non-spectrophotometric data that should be 
 #'                 associated with each read widemeasures. A named list where 
 #'                 each item in the list is either: a vector of length 2, or
@@ -573,6 +711,10 @@ read_blocks <- function(files, extension = NULL,
 #'                   as \code{NA} values by \code{utils::read.csv},
 #'                   \code{readxl::read_xls}, \code{readxl::read_xlsx},
 #'                   or \code{utils::read.table}
+#' @param extension Allowed for backward compatibility; \code{filetype} is
+#'                  now the preferred argument name.
+#' @param names_to_col Allowed for backward compatibility; 
+#'               \code{run_names_header} is now the preferred argument name.
 #' @param ...   Other arguments passed to \code{utils::read.csv},
 #'              \code{readxl::read_xls}, \code{readxl::read_xlsx}, or
 #'              \code{utils::read.table}
@@ -581,34 +723,48 @@ read_blocks <- function(files, extension = NULL,
 #'         A list of widemeasures named by filename
 #' 
 #' @export
-read_wides <- function(files, extension = NULL, 
+read_wides <- function(files, filetype = NULL, 
                        startrow = NULL, endrow = NULL, 
                        startcol = NULL, endcol = NULL,
                        header = TRUE,
                        sheet = NULL, 
                        run_names = NULL,
-                       names_to_col = "file",
+                       run_names_header = "file",
+                       run_names_dot = FALSE, run_names_path = TRUE,
+                       run_names_ext = FALSE,
                        metadata = NULL, 
                        na.strings = c("NA", ""),
+                       extension, names_to_col,
                        ...) {
   #Logic 2.0: if header TRUE
   #             if startrow provided, header is startrow
   #             if startrow not provided, header is 1
   #           if header FALSE
   #             columns numbered V1...Vn
+  
+  if(!base::missing(extension)) {
+    if(!base::missing(filetype)) {
+      warning("Ignoring extension, using filetype")
+    } else {filetype <- extension}
+  }
+  if(!base::missing(names_to_col)) {
+    if(!base::missing(run_names_header)) {
+      warning("Ignoring names_to_col, using run_names_header")
+    } else {run_names_header <- names_to_col}
+  }
 
   nwides <- max(length(files), length(startrow), length(endrow),
                 length(startcol), length(endcol), length(sheet),
                 na.rm = TRUE)
   
-  files <- checkdim_inputs(files, "files", nwides, "the number of wides")
+  files <- check_input_dimensions(files, "files", nwides, "the number of wides")
   
   if(!is.null(startrow) & !all(is.numeric(startrow))) {
     startrow[!is.numeric(startrow)] <- from_excel(startrow[!is.numeric(startrow)])
     startrow <- as.numeric(startrow)
   }
   if(is.null(startrow)) {startrow <- NA}
-  startrow <- checkdim_inputs(startrow, "startrow", nwides,
+  startrow <- check_input_dimensions(startrow, "startrow", nwides,
                               "the number of wides")
   
   if(!is.null(endrow) & !all(is.numeric(endrow))) {
@@ -616,7 +772,7 @@ read_wides <- function(files, extension = NULL,
     endrow <- as.numeric(endrow)
   }
   if(is.null(endrow)) {endrow <- NA}
-  endrow <- checkdim_inputs(endrow, "endrow", nwides,
+  endrow <- check_input_dimensions(endrow, "endrow", nwides,
                             "the number of wides")
 
   if(!is.null(startcol) & !all(is.numeric(startcol))) {
@@ -624,7 +780,7 @@ read_wides <- function(files, extension = NULL,
     startcol <- as.numeric(startcol)
   }
   if(is.null(startcol)) {startcol <- NA}
-  startcol <- checkdim_inputs(startcol, "startcol", nwides,
+  startcol <- check_input_dimensions(startcol, "startcol", nwides,
                               "the number of wides")
   
   if(!is.null(endcol) & !all(is.numeric(endcol))) {
@@ -632,11 +788,11 @@ read_wides <- function(files, extension = NULL,
     endcol <- as.numeric(endcol)
   }
   if(is.null(endcol)) {endcol <- NA}
-  endcol <- checkdim_inputs(endcol, "endcol", nwides,
+  endcol <- check_input_dimensions(endcol, "endcol", nwides,
                             "the number of wides")
   
   if(!is.null(sheet)) {
-    sheet <- checkdim_inputs(sheet, "sheet", nwides,
+    sheet <- check_input_dimensions(sheet, "sheet", nwides,
                              "the number of wides")
   }
   
@@ -644,32 +800,19 @@ read_wides <- function(files, extension = NULL,
     stop("not all metadata have names")
   }
   
-  #Determine file extension(s)
-  if(is.null(extension)) {
-    extension <- vapply(files, tools::file_ext, FUN.VALUE = "return strings",
-                        USE.NAMES = FALSE)
-    if(any(!extension %in% c("csv", "xls", "xlsx"))) {
-      warning("Extension inferred but not one of: csv, xls, xlsx. Will treat as tbl\n")
-    }
-  } else {
-    extension <- checkdim_inputs(extension, "extension", nwides,
-                                 "the number of wides")
-    stopifnot(all(extension %in% c("csv", "xls", "xlsx", "tbl")))
-  }
-  if(any(extension %in% c("xls", "xlsx")) && 
-     !requireNamespace("readxl", quietly = TRUE)) {
-    stop("Package \"readxl\" must be installed to read xls or xlsx files",
-         call. = FALSE)
-  }
+  #Determine filetype(s)
+  filetype <- infer_check_filetype(
+    filetype = filetype, files = files,
+    needed_len = nwides, needed_name = "the number of wides")
   
   #Check for names error
   if (!is.null(run_names)) {stopifnot(length(run_names) == nwides)}
   
   #If run_names not provided, infer from filenames
   if (is.null(run_names)) {
-    #infer the names from filenames, stripping off the extension from end
-    # and the dot at the beginning (if any)
-    run_names <- sub("^\\.?/?(.*)\\.[[:alnum:]]+$", "\\1", files)
+    run_names <- parse_filestrings(
+      files, keep_dot = run_names_dot, 
+      keep_path = run_names_path, keep_ext = run_names_ext)
   }
   
   if (!is.null(metadata)) {
@@ -681,10 +824,10 @@ read_wides <- function(files, extension = NULL,
       }
       if(is.list(metadata[[i]])) {
         metadata[[i]][[1]] <- 
-          checkdim_inputs(metadata[[i]][[1]], names(metadata)[i],
+          check_input_dimensions(metadata[[i]][[1]], names(metadata)[i],
                           nwides, "the number of blocks")
         metadata[[i]][[2]] <- 
-          checkdim_inputs(metadata[[i]][[2]], names(metadata)[i],
+          check_input_dimensions(metadata[[i]][[2]], names(metadata)[i],
                           nwides, "the number of blocks")
       }
     }
@@ -695,22 +838,22 @@ read_wides <- function(files, extension = NULL,
   
   #Import data
   for (i in 1:nwides) {
-    temp <- read_gcfile(file = files[i], extension = extension[i],
+    rawfile <- read_gcfile(file = files[i], filetype = filetype[i],
                         na.strings = na.strings, sheet = sheet[i], ...)
     
     #Infer colnames/take subsets as needed
-    if(is.na(endrow[i])) {endrow[i] <- nrow(temp)}
-    if(is.na(endcol[i])) {endcol[i] <- ncol(temp)}
+    if(is.na(endrow[i])) {endrow[i] <- nrow(rawfile)}
+    if(is.na(endcol[i])) {endcol[i] <- ncol(rawfile)}
     if(is.na(startcol[i])) {startcol[i] <- 1}
     if (is.na(startrow[i])) {startrow[i] <- 1}
-    if(startrow[i] < 1 || endrow[i] > nrow(temp) ||
-       startcol[i] < 1 || endcol[i] > ncol(temp)) {
+    if(startrow[i] < 1 || endrow[i] > nrow(rawfile) ||
+       startcol[i] < 1 || endcol[i] > ncol(rawfile)) {
       stop("Startrow, startcol, endrow, or endcol are out of range for the file")}
     if (header == TRUE) { #so colnames taken from file
-      outputs[[i]] <- temp[(startrow[i]+1):endrow[i], startcol[i]:endcol[i]]
-      colnames(outputs[[i]]) <- temp[(startrow[i]), startcol[i]:endcol[i]]
+      outputs[[i]] <- rawfile[(startrow[i]+1):endrow[i], startcol[i]:endcol[i]]
+      colnames(outputs[[i]]) <- rawfile[(startrow[i]), startcol[i]:endcol[i]]
     } else { #so colnames should be numbered
-      outputs[[i]] <- temp[startrow[i]:endrow[i], startcol[i]:endcol[i]]
+      outputs[[i]] <- rawfile[startrow[i]:endrow[i], startcol[i]:endcol[i]]
       colnames(outputs[[i]]) <- paste0("V", 1:ncol(outputs[[i]]))
     }
     
@@ -721,22 +864,22 @@ read_wides <- function(files, extension = NULL,
       for (j in 1:length(metadata)) {
         if(!is.list(metadata[[j]])) { #metadata item is a vector
           metadata_vector[j] <- 
-            get_metadata(df = temp, row = metadata[[j]][1],
+            get_metadata(df = rawfile, row = metadata[[j]][1],
                          col = metadata[[j]][2])
         } else {  #metadata item is a list (presumably of two vectors)
           #the first vector is the rows for each ith block
           #the second vector is the columns for each ith block
           metadata_vector[j] <- 
-            get_metadata(df = temp, row = metadata[[j]][[1]][i],
+            get_metadata(df = rawfile, row = metadata[[j]][[1]][i],
                          col = metadata[[j]][[2]][i])
         }
       }
     } else {metadata_vector <- NULL}
     
     #Add run_names if requested as column
-    if(!is.null(names_to_col)) {
+    if(!is.null(run_names_header)) {
       metadata_vector <- c(run_names[i], metadata_vector)
-      names(metadata_vector)[1] <- names_to_col
+      names(metadata_vector)[1] <- run_names_header
     }
     #Add metadata (incl run names) on LHS of df in same order as specified
     if (!is.null(metadata_vector)) {
@@ -769,12 +912,17 @@ read_wides <- function(files, extension = NULL,
 #' 
 #' @param files A vector of filepaths (relative to current working directory)
 #'              where each one is a tidy-shaped data file
-#' @param extension (optional) the extension of the files:
-#'                  "csv", "xls", or "xlsx", or "tbl" for use of read.table
+#' @param filetype (optional) the type(s) of the files. Options include:
+#' 
+#'                  "csv", "xls", or "xlsx".
 #'                  
-#'                  If none provided, \code{read_tidys} will infer file 
-#'                  extension from provided filenames. When extension is not 
-#'                  "csv", "xls", or "xlsx" will use \code{utils::read.table}
+#'                  "tbl" or "table" to use \code{read.table} to read the file,
+#'                  "csv2" to use \code{read.csv2}, "delim" to 
+#'                  use \code{read.delim}, or "delim2" to use \code{read.delim2}.
+#'                  
+#'                  If none provided, \code{read_tidys} will infer filetype(s) 
+#'                  from the extension(s) in \code{files}. When extension is 
+#'                  not "csv", "xls", or "xlsx", will use "table".
 #' @param startrow,endrow,startcol,endcol (optional) the rows and columns where 
 #'                 the data are located in \code{files}.
 #'                 
@@ -792,27 +940,36 @@ read_wides <- function(files, extension = NULL,
 #'                  file names if not specified. These names may be added
 #'                  to the resulting data frame depending on the value of
 #'                  the \code{names_to_col} argument
-#' @param names_to_col Should the run names (provided in \code{run_names}
+#' @param run_names_header Should the run names (provided in \code{run_names}
 #'                     or inferred from \code{files}) be added as a column to the
 #'                     output? 
 #'                     
-#'                     If \code{names_to_col} is TRUE, they will be added with.
+#'                     If \code{run_names_header} is TRUE, they will be added with
 #'                     the column name "run_name"
 #'                     
-#'                     If \code{names_to_col} is FALSE, they will not be added.
+#'                     If \code{run_names_header} is FALSE, they will not be added.
 #'                     
-#'                     If \code{names_to_col} is a string, they will be added
+#'                     If \code{run_names_header} is a string, they will be added
 #'                     and the column name will be the string specified
-#'                     for \code{names_to_col}.
+#'                     for \code{run_names_header}.
 #'                     
-#'                     If \code{names_to_col} is NULL, they only will be 
+#'                     If \code{run_names_header} is NULL, they only will be 
 #'                     added if there are multiple tidy data.frames being read.
 #'                     In which case, the column name will be "run_name"
+#' @param run_names_dot If run_names are inferred from filenames, should 
+#'                        the leading './' (if any) be retained
+#' @param run_names_path If run_names are inferred from filenames, should 
+#'                        the path (if any) be retained
+#' @param run_names_ext If run_names are inferred from filenames, should 
+#'                        the file extension (if any) be retained
 #' @param na.strings A character vector of strings which are to be interpreted
 #'                   as \code{NA} values by \code{utils::read.csv},
 #'                   \code{readxl::read_xls}, \code{readxl::read_xlsx},
 #'                   or \code{utils::read.table}
-#'                     
+#' @param extension Allowed for backward compatibility; \code{filetype} is
+#'                  now the preferred argument name.
+#' @param names_to_col Allowed for backward compatibility; 
+#'               \code{run_names_header} is now the preferred argument name.
 #' @param ...   Other arguments passed to \code{utils::read.csv},
 #'              \code{readxl::read_xls}, \code{readxl::read_xlsx}, or
 #'              \code{utils::read.table}
@@ -820,7 +977,7 @@ read_wides <- function(files, extension = NULL,
 #'               
 #' @details
 #' \code{startrow}, \code{endrow}, \code{startcol}, \code{endcol}, 
-#' \code{sheet} and \code{extension} can either be a single value that 
+#' \code{sheet} and \code{filetype} can either be a single value that 
 #' applies for all files or vectors or lists the same length as \code{files}
 #' 
 #' Note that the startrow is always assumed to be a header
@@ -829,13 +986,28 @@ read_wides <- function(files, extension = NULL,
 #'         A list of tidy-shaped data.frames named by filename
 #'         
 #' @export
-read_tidys <- function(files, extension = NULL, 
+read_tidys <- function(files, filetype = NULL, 
                        startrow = NULL, endrow = NULL, 
                        startcol = NULL, endcol = NULL,
                        sheet = NULL, 
-                       run_names = NULL, names_to_col = NULL,
+                       run_names = NULL, run_names_header = NULL,
+                       run_names_dot = FALSE, run_names_path = TRUE,
+                       run_names_ext = FALSE,
                        na.strings = c("NA", ""),
+                       extension, names_to_col,
                        ...) {
+  
+  if(!base::missing(extension)) {
+    if(!base::missing(filetype)) {
+      warning("Ignoring extension, using filetype")
+    } else {filetype <- extension}
+  }
+  if(!base::missing(names_to_col)) {
+    if(!base::missing(run_names_header)) {
+      warning("Ignoring names_to_col, using run_names_header")
+    } else {run_names_header <- names_to_col}
+  }
+  
   if (!is.null(startrow) & !is.numeric(startrow)) {
     startrow <- from_excel(startrow)}
   if (!is.null(endrow) & !is.numeric(endrow)) {
@@ -846,46 +1018,34 @@ read_tidys <- function(files, extension = NULL,
     endcol <- from_excel(endcol)}
   
   if(is.null(startrow)) {startrow <- NA}
-  startrow <- checkdim_inputs(startrow, "startrow", length(files))
+  startrow <- check_input_dimensions(startrow, "startrow", length(files))
   
   if (is.null(endrow)) {endrow <- NA}
-  endrow <- checkdim_inputs(endrow, "endrow", length(files))
+  endrow <- check_input_dimensions(endrow, "endrow", length(files))
   
   if (is.null(startcol)) {startcol <- NA}
-  startcol <- checkdim_inputs(startcol, "startcol", length(files))
+  startcol <- check_input_dimensions(startcol, "startcol", length(files))
   
   if (is.null(endcol)) {endcol <- NA}
-  endcol <- checkdim_inputs(endcol, "endcol", length(files))
+  endcol <- check_input_dimensions(endcol, "endcol", length(files))
   
   if (!is.null(sheet)) {
-    sheet <- checkdim_inputs(sheet, "sheet", length(files))
+    sheet <- check_input_dimensions(sheet, "sheet", length(files))
   }
   
-  #Determine file extension(s)
-  if (is.null(extension)) {
-    extension <- vapply(files, tools::file_ext, FUN.VALUE = "return strings",
-                        USE.NAMES = FALSE)
-    if(any(!extension %in% c("csv", "xls", "xlsx"))) {
-      warning("Extension inferred but not one of: csv, xls, xlsx. Will treat as tbl\n")
-    }
-  } else {
-    extension <- checkdim_inputs(extension, "extension", length(files))
-    stopifnot(all(extension %in% c("csv", "xls", "xlsx", "tbl")))
-  }
-  if(any(extension %in% c("xls", "xlsx")) && 
-     !requireNamespace("readxl", quietly = TRUE)) {
-    stop("Package \"readxl\" must be installed to read xls or xlsx files",
-         call. = FALSE)
-  }
+  #Determine filetype(s)
+  filetype <- infer_check_filetype(
+    filetype = filetype, files = files, needed_len = length(files),
+    needed_name = "the number of tidys")
   
   #Check for names error
   if (!is.null(run_names)) {stopifnot(length(run_names) == length(files))}
   
   #If run_names not provided, infer from filenames
   if (is.null(run_names)) {
-    #infer the names from filenames, stripping off the extension from end
-    # and the dot at the beginning (if any)
-    run_names <- sub("^\\.?/?(.*)\\.[[:alnum:]]+$", "\\1", files)
+    run_names <- parse_filestrings(
+      files, keep_dot = run_names_dot, 
+      keep_path = run_names_path, keep_ext = run_names_ext)
   }
   
   #Create empty recipient list
@@ -893,43 +1053,43 @@ read_tidys <- function(files, extension = NULL,
   
   #Import data
   for (i in 1:length(files)) {
-    temp <- read_gcfile(file = files[i], extension = extension[i],
+    rawfile <- read_gcfile(file = files[i], filetype = filetype[i],
                         na.strings = na.strings, sheet = sheet[i], ...)
     
     #Infer colnames/take subsets as needed
-    if(is.na(endrow[i])) {endrow[i] <- nrow(temp)}
-    if(is.na(endcol[i])) {endcol[i] <- ncol(temp)}
+    if(is.na(endrow[i])) {endrow[i] <- nrow(rawfile)}
+    if(is.na(endcol[i])) {endcol[i] <- ncol(rawfile)}
     if(is.na(startcol[i])) {startcol[i] <- 1}
     if (is.na(startrow[i])) {startrow[i] <- 1}
-    if(startrow[i] < 1 || endrow[i] > nrow(temp) ||
-       startcol[i] < 1 || endcol[i] > ncol(temp)) {
+    if(startrow[i] < 1 || endrow[i] > nrow(rawfile) ||
+       startcol[i] < 1 || endcol[i] > ncol(rawfile)) {
       stop("Startrow, startcol, endrow, or endcol are out of range for the file")}
     
     #Get header
-    outputs[[i]] <- temp[(startrow[i]+1):endrow[i], startcol[i]:endcol[i]]
-    colnames(outputs[[i]]) <- temp[(startrow[i]), startcol[i]:endcol[i]]
+    outputs[[i]] <- rawfile[(startrow[i]+1):endrow[i], startcol[i]:endcol[i]]
+    colnames(outputs[[i]]) <- rawfile[(startrow[i]), startcol[i]:endcol[i]]
     
     #Add run name if needed
-    if(is.null(names_to_col)) {
+    if(is.null(run_names_header)) {
       if (length(outputs) > 1) {
         #names should be saved in a column titled run_name
         outputs[[i]] <- cbind(data.frame("run_name" = run_names[i]),
                               outputs[[i]])
       }
     } else {
-      if(is.character(names_to_col)) {
-        #names should be saved in a column titled the value of names_to_col
-        temp <- data.frame("run_name" = run_names[i])
-        names(temp) <- names_to_col
-        outputs[[i]] <- cbind(temp, outputs[[i]])
+      if(is.character(run_names_header)) {
+        #names should be saved in a column titled the value of run_names_header
+        temp_runname_df <- data.frame("run_name" = run_names[i])
+        names(temp_runname_df) <- run_names_header
+        outputs[[i]] <- cbind(temp_runname_df, outputs[[i]])
       } else {
-        if(names_to_col) {
-          #names_to_col is TRUE
+        if(run_names_header) {
+          #run_names_header is TRUE
           outputs[[i]] <- cbind(data.frame("run_name" = run_names[i]),
                                 outputs[[i]])
-        } else if (!names_to_col) {
-          #names_to_col is FALSE, so add nothing
-        } else {stop("names_to_col is not one of the valid types")}
+        } else if (!run_names_header) {
+          #run_names_header is FALSE, so add nothing
+        } else {stop("run_names_header is not one of the valid types")}
       }
     }
   }
@@ -1069,7 +1229,7 @@ import_blockmeasures <- function(files, num_plates = 1,
 import_blockdesigns <- function(files, block_names = NULL, 
                                 block_name_header = "block_name", 
                                 sep = NULL, ...) {
-  blocks <- dots_parser(read_blocks, 
+  blocks <- parse_dots(read_blocks, 
                         block_names = block_names, files = files, 
                         block_name_header = block_name_header, ...)
   
@@ -1097,18 +1257,18 @@ import_blockdesigns <- function(files, block_names = NULL,
       } else {sep <- sep[which(not_in_blocks)[1]]}
     }
 
-    blocks_pasted <- dots_parser(paste_blocks, blocks = blocks,
+    blocks_pasted <- parse_dots(paste_blocks, blocks = blocks,
                                  sep = sep, nested_metadata = TRUE, ...)
   } else {blocks_pasted <- blocks}
   
-  wides <- dots_parser(trans_block_to_wide, blocks = blocks_pasted,
+  wides <- parse_dots(trans_block_to_wide, blocks = blocks_pasted,
                        nested_metadata = TRUE, ...)
   
   #Transform to tidy, dropping the block_name column and using it
   # as the column name for the values column
   vals_colname <- wides[1, block_name_header]
     
-  tidys <- dots_parser(
+  tidys <- parse_dots(
     trans_wide_to_tidy, 
     wides = wides[, -which(block_name_header == colnames(wides))], 
     data_cols = colnames(wides)[colnames(wides) != block_name_header], 
@@ -1116,7 +1276,7 @@ import_blockdesigns <- function(files, block_names = NULL,
     ...)
   
   if(length(files) > 1) {
-    tidy_sep <- dots_parser(separate_tidy, 
+    tidy_sep <- parse_dots(separate_tidy, 
                             data = tidys, sep = sep, col = vals_colname)
   } else {tidy_sep <- tidys}
     
@@ -1602,9 +1762,10 @@ write_blocks <- function(blocks, file,
     rs <- 1 #row start index
     for (i in 1:length(blocks)) {
       #Use sub-function to fill all blocks into output df
-      temp <- fill_data_metadata(output = output, input = blocks[[i]], rs = rs)
-      output <- temp[[1]]
-      rs <- temp[[2]]
+      fill_data_metadata_tempoutput <- 
+        fill_data_metadata(output = output, input = blocks[[i]], rs = rs)
+      output <- fill_data_metadata_tempoutput[[1]]
+      rs <- fill_data_metadata_tempoutput[[2]]
     }
     #Write file
     utils::write.table(output, file = paste0(dir, file), sep = ",", na = na,
@@ -2054,20 +2215,20 @@ trans_wide_to_tidy <- function(wides,
   if (!is.list(id_cols)) {
     id_cols <- list(id_cols)
   }
-  id_cols <- checkdim_inputs(id_cols, "id_cols", length(wides))
+  id_cols <- check_input_dimensions(id_cols, "id_cols", length(wides))
   
   if (!is.list(data_cols)) {
     data_cols <- list(data_cols)
   }
-  data_cols <- checkdim_inputs(data_cols, "data_cols", length(wides))
+  data_cols <- check_input_dimensions(data_cols, "data_cols", length(wides))
   
   #Check cols inputs
   if (any(!is.na(data_cols) & !is.na(id_cols))) {
     warning("Cannot provide both data_cols and id_cols for a given wides, using data_cols only\n")
   }
   
-  names_to <- checkdim_inputs(names_to, "names_to", length(wides))
-  values_to <- checkdim_inputs(values_to, "values_to", length(wides))
+  names_to <- check_input_dimensions(names_to, "names_to", length(wides))
+  values_to <- check_input_dimensions(values_to, "values_to", length(wides))
   
   #Create values_transform list as appropriate
   if("values_transform" %in% names(list(...))) {
@@ -2076,7 +2237,7 @@ trans_wide_to_tidy <- function(wides,
               values_transform will override values_to_numeric\n")}
   } else {
     if(values_to_numeric) {
-      values_transform = rep(list(list(temp = as.numeric)), length(values_to))
+      values_transform = rep(list(list(templistname = as.numeric)), length(values_to))
       for (i in 1:length(values_to)) {
         names(values_transform[[i]]) <- values_to[i]
       }
@@ -2185,7 +2346,7 @@ merge_dfs <- function(x, y = NULL, by = NULL, drop = FALSE,
   if(collapse) {
     #First define the worker func that collapses the df's
     collapse_list <- function(listdfs, names_to) {
-      temp <- NULL
+      collapse_list_output <- NULL
       for (i in 1:length(listdfs)) {
         if(!is.null(names_to) & !is.na(names_to)) {
           #Put name of ea list element (ea df) into column
@@ -2193,10 +2354,10 @@ merge_dfs <- function(x, y = NULL, by = NULL, drop = FALSE,
           colnames(listdfs[[i]])[ncol(listdfs[[i]])] <- names_to
         }
         #Collapse dfs together
-        if (is.null(temp)) {temp <- listdfs[[i]]
-        } else {temp <- dplyr::full_join(temp, listdfs[[i]])}
+        if (is.null(collapse_list_output)) {collapse_list_output <- listdfs[[i]]
+        } else {collapse_list_output <- dplyr::full_join(collapse_list_output, listdfs[[i]])}
       }
-      return(temp)
+      return(collapse_list_output)
     }
     
     #Then collapse x and collapse y into dfs as needed
@@ -2388,13 +2549,13 @@ separate_tidy <- function(data, col, into = NULL, sep = "_",
     }
   }
   
-  temp <- tidyr::separate(data = data, col = col, into = into, sep = sep, ...)
+  output <- tidyr::separate(data = data, col = col, into = into, sep = sep, ...)
   if(coerce_NA == TRUE) {
-    for (idx in which(colnames(temp) %in% into)) {
-      temp[!is.na(temp[, idx]) & temp[, idx] %in% na.strings, idx] <- NA
+    for (idx in which(colnames(output) %in% into)) {
+      output[!is.na(output[, idx]) & output[, idx] %in% na.strings, idx] <- NA
     }
   }
-  return(temp)
+  return(output)
 }
 
 
@@ -2405,15 +2566,18 @@ separate_tidy <- function(data, col, into = NULL, sep = "_",
 #' This function calls other functions to smooth growth curve data
 #' 
 #' @param ... Arguments passed to \code{stats::loess}, \code{mgcv::gam},
-#'            \code{moving_average}, or \code{moving_median}. Typically
-#'            includes tuning parameter(s), which in some cases are required.
+#'            \code{moving_average}, \code{moving_median}, or 
+#'            \code{stats::smooth.spline}. Typically includes tuning 
+#'            parameter(s), which in some cases are required.
 #'            See Details for more information.
-#' @param x An (optional) vector of predictor values to smooth along (e.g. time)
+#' @param x An (often optional) vector of predictor values to smooth along 
+#'          (e.g. time)
 #' @param y A vector of response values to be smoothed (e.g. density). If NULL,
 #'          \code{formula} and \code{data} *must* be provided via \code{...}
 #' @param sm_method Argument specifying which smoothing method should
 #'                  be used to smooth data. Options include 
-#'                  "moving-average", "moving-median", "loess", and "gam"
+#'                  "moving-average", "moving-median", "loess", "gam",
+#'                  and "smooth.spline".
 #' @param subset_by An optional vector as long as \code{y}. 
 #'                  \code{y} will be split by the unique values of this vector 
 #'                  and the derivative for each group will be calculated 
@@ -2465,7 +2629,7 @@ separate_tidy <- function(data, col, into = NULL, sep = "_",
 #'            \code{mgcv::s} to smooth the data. The data argument should be a 
 #'            \code{data.frame} containing the variables in the formula.
 #'            In such cases, \code{subset_by} can still be specified as a vector
-#'            as long as \code{nrow(data)}
+#'            with length \code{nrow(data)}
 #' 
 #' @return If \code{return_fitobject == FALSE:}
 #' 
@@ -2480,11 +2644,11 @@ separate_tidy <- function(data, col, into = NULL, sep = "_",
 #' @export
 smooth_data <- function(..., x = NULL, y = NULL, sm_method, subset_by = NULL,
                         return_fitobject = FALSE) {
-  
-  if(!sm_method %in% c("moving-average", "moving-median", "gam", "loess")) {
-    stop("sm_method must be one of: moving-average, moving-median, gam, or loess")
+  if(!sm_method %in% c("moving-average", "moving-median", "gam", 
+                       "loess", "smooth.spline")) {
+    stop("sm_method must be one of: moving-average, moving-median, gam, loess, or smooth.spline")
   }
-
+  
   check_grouped(name_for_error = "smooth_data", subset_by = subset_by)
   
   #Parse x and y, and/or ... args, into formula and data
@@ -2540,42 +2704,51 @@ smooth_data <- function(..., x = NULL, y = NULL, sm_method, subset_by = NULL,
   for (i in 1:length(unique(subset_by))) {
     #Calculate fitted values
     if (sm_method == "moving-average") {
-      temp <- 
+      smoothed_object <- 
         list(
           moving_average(formula = formula, 
                          data = data[subset_by == unique(subset_by)[i], ],
                          ...))
-      names(temp) <- "fitted"
+      names(smoothed_object) <- "fitted"
     } else if (sm_method == "moving-median") {
-      temp <-
+      smoothed_object <-
         list(
           moving_median(formula = formula,
                         data = data[subset_by == unique(subset_by)[i], ],
                         ...))
-      names(temp) <- "fitted"
+      names(smoothed_object) <- "fitted"
     } else if (sm_method == "loess") {
-      temp <- 
+      smoothed_object <- 
         stats::loess(formula = formula, 
                      data = data[subset_by == unique(subset_by)[i], ],
                      na.action = "na.exclude", ...)
     } else if (sm_method == "gam") {
-      temp <- 
-        dots_parser(
+      smoothed_object <- 
+        parse_dots(
           FUN = mgcv::gam,
           formula = formula, data = data[subset_by == unique(subset_by)[i], ],
           na.action = "na.exclude", ...)
+    } else if (sm_method == "smooth.spline") {
+      smoothed_object <-
+        parse_dots(
+          FUN = gc_smooth.spline,
+          SUBFUN = stats::smooth.spline,
+          x = x, y = y,
+          ...)
     }
     
     #Store results as requested
     if (return_fitobject) {
-      fits_list[[i]] <- temp
+      fits_list[[i]] <- smoothed_object
     } else {
       #Fill in output if needed
       if(sm_method %in% c("gam", "loess")) {
         out[subset_by == unique(subset_by)[i]] <-
-          stats::predict(temp, newdata = data[subset_by == unique(subset_by)[i], ])
+          stats::predict(smoothed_object, newdata = data[subset_by == unique(subset_by)[i], ])
+      } else if (sm_method == "smooth.spline") {
+        out[subset_by == unique(subset_by)[i]] <- smoothed_object$y
       } else {
-        out[subset_by == unique(subset_by)[i]] <- temp[["fitted"]]
+        out[subset_by == unique(subset_by)[i]] <- smoothed_object[["fitted"]]
       }
     }
   }
@@ -2730,6 +2903,66 @@ moving_median <- function(formula, data, window_width_n = NULL,
   return(results)
 }
 
+#' Fit a Smoothing Spline
+#' 
+#' This function is a wrapper for \code{stats::smooth.spline}, which fits 
+#' a cubic smoothing spline to the supplied data, but includes the option
+#' to remove \code{NA} values, and returns values in the original order.
+#' 
+#' @param x A vector giving the values of the predictor variable.
+#' @param y A vector giving the values of the response variable. If \code{y} is
+#'          missing or \code{NULL}, the responses are assumed to be specified
+#'          by \code{x}, with \code{x} the index vector.
+#' @param ... Additional arguments passed to \code{stats::smooth.spline}.
+#' @param na.rm logical whether NA's should be removed before analyzing.
+#'              Required to be TRUE if any \code{x} or \code{y} values are NA.
+#'              
+#' @details See \code{stats::smooth.spline}              
+#' 
+#' @return Similar to \code{stats::smooth.spline}, an object of class 
+#'         "\code{smooth.spline}" with many components. Differs in that
+#'         x, y, and w have NA's at any indices where \code{x} or \code{y} were 
+#'         NA in the inputs, and x, y, and w are returned to match the input 
+#'         \code{x} in order and length
+#' 
+#' @export   
+gc_smooth.spline <- function(x, y = NULL, ..., na.rm = TRUE) {
+  #remove NAs
+  xy_nas_removed <- rm_nas(x = x, y = y, 
+                           na.rm = na.rm, stopifNA = TRUE)
+  if(length(xy_nas_removed[["y"]]) <= 1) {
+    return(list(x = rep(NA, length(x)), y = rep(NA, length(x))))}
+  
+  #Reorder as needed
+  xy_reordered <- reorder_xy(x = xy_nas_removed[["x"]], y = xy_nas_removed[["y"]])
+  
+  #Calculate
+  ans <- stats::smooth.spline(x = xy_reordered[["x"]],
+                              y = xy_reordered[["y"]],
+                              ...)
+  
+  #Back to original order
+  # (but smooth.spline only returns distinct values of x, so this matching
+  # duplicates any values that were not distinct in the input
+  ans$w <- ans$w[match(xy_nas_removed[["x"]], ans$x)]
+  ans$y <- ans$y[match(xy_nas_removed[["x"]], ans$x)]
+  ans$x <- ans$x[match(xy_nas_removed[["x"]], ans$x)]
+  
+  #Add NAs
+  ans$x <- add_nas(
+    x = ans$x,
+    nas_indices_removed = xy_nas_removed[["nas_indices_removed"]])[["x"]]
+  ans$y <- add_nas(
+    x = ans$y,
+    nas_indices_removed = xy_nas_removed[["nas_indices_removed"]])[["x"]]
+  ans$w <- add_nas(
+    x = ans$w,
+    nas_indices_removed = xy_nas_removed[["nas_indices_removed"]])[["x"]]
+  
+  return(ans)
+}
+
+
 # Processing: Derivatives ----
 
 #' Calculate derivatives of vector of data
@@ -2746,7 +2979,7 @@ moving_median <- function(formula, data, window_width_n = NULL,
 #'                  derivative is returned
 #' @param x_scale Numeric to scale x by in derivative calculation
 #'                
-#'                Set x_scale to the ratio of the the units of 
+#'                Set x_scale to the ratio of the units of 
 #'                x to the desired units. E.g. if x is in seconds, but the 
 #'                desired derivative is in units of /minute, set 
 #'                \code{x_scale = 60} (since there are 60 seconds in 1 minute).
@@ -2782,7 +3015,10 @@ moving_median <- function(formula, data, window_width_n = NULL,
 #'                  When using \code{window_width} and \code{window_width_n} 
 #'                  at the same time, windows are conservative. Points 
 #'                  included in each window will meet both the 
-#'                  \code{window_width} and the \code{window_width_n}
+#'                  \code{window_width} and the \code{window_width_n}.
+#'                  
+#'                  A value of \code{window_width_n = 3} or 
+#'                  \code{window_width_n = 5} is often the most effective.
 #' @param trans_y  One of \code{c("linear", "log")} specifying the
 #'                 transformation of y-values.
 #' 
@@ -2860,7 +3096,7 @@ calc_deriv <- function(y, x = NULL, return = "derivative", percapita = FALSE,
   if(is.null(blank)) {
     if(percapita == TRUE) {stop("percapita == TRUE but blank is NULL")}
   } else { #blank is not NULL
-    blank <- checkdim_inputs(
+    blank <- check_input_dimensions(
       blank, "blank", needed_len = length(unique(subset_by)),
       needed_name = "the number of unique subset_by values") 
   }
@@ -2877,7 +3113,7 @@ calc_deriv <- function(y, x = NULL, return = "derivative", percapita = FALSE,
     if(!is.null(blank)) {sub_y <- sub_y - blank[i]}
     
     if(trans_y == "log") {
-      caught_log <- myTryCatch(log(sub_y))
+      caught_log <- gcTryCatch(log(sub_y))
       if(!is.null(caught_log$warning)) {
         warning(paste("during log-transformation,", caught_log$warning))
         caught_log$value[is.nan(caught_log$value)] <- NA}
@@ -2931,13 +3167,13 @@ calc_deriv <- function(y, x = NULL, return = "derivative", percapita = FALSE,
           #get slope
           # (if trans_y = 'linear', slope is derivative
           #  if trans_y = 'log', slope is already percap deriv)
-          temp <- stats::lm(myy ~ myx, 
+          lmoutput <- stats::lm(myy ~ myx, 
                             data = data.frame(myy = sub_y[windows[[j]]],
                                               myx = sub_x[windows[[j]]]))
-          sub_ans[j] <- temp$coefficients["myx"]*x_scale
+          sub_ans[j] <- lmoutput$coefficients["myx"]*x_scale
           if(percapita == TRUE && trans_y == 'linear') {
             sub_ans[j] <- 
-              sub_ans[j]/temp$fitted.values[which(windows[[j]] == j)]
+              sub_ans[j]/lmoutput$fitted.values[which(windows[[j]] == j)]
           }
         }
       }
@@ -3131,21 +3367,12 @@ find_local_extrema <- function(y, x = NULL,
   } else {x <- make.numeric(x)}
   
   #Take subset
-  if(!is.null(subset)) {
-    if(length(subset) != length(y)) {stop("subset and y must be the same length")}
-    if(!all(is.logical(subset))) {stop("subset must be vector of logical values")}
-    if(any(is.na(subset))) {
-      warning("subset contains NA's, treating NA's as FALSE")
-      subset[is.na(subset)] <- FALSE
-    }
-    indices <- which(subset)
-    if(!is.null(x)) {x <- x[indices]}
-    y <- y[indices]
-  } else {indices <- 1:length(y)}
+  subset_temp <- take_subset(x = x, y = y, subset = subset)
+  if(length(subset_temp$y) == 0) {return(NA)}
   
   #remove nas
-  narm_temp <- rm_nas(x = x, y = y, na.rm = na.rm, stopifNA = TRUE)
-  
+  narm_temp <- rm_nas(x = subset_temp$x, y = subset_temp$y, 
+                      na.rm = na.rm, stopifNA = TRUE)
   if(length(narm_temp$y) == 0) {return(NA)}
   
   #reorder
@@ -3191,7 +3418,7 @@ find_local_extrema <- function(y, x = NULL,
     }
     
     #Change indices to account for subset being used
-    output <- indices[output]
+    output <- subset_temp$indices[output]
     
     return(output[order(output)])
   } else if (return == "x") {
@@ -3347,17 +3574,12 @@ find_threshold_crosses <- function(y, x = NULL, threshold,
   x <- make.numeric(x, "x")
   
   #Take subset
-  if(!is.null(subset)) {
-    if(length(subset) != length(y)) {stop("subset and y must be the same length")}
-    if(!all(is.logical(subset))) {stop("subset must be vector of logical values")}
-    indices <- which(subset)
-    if(!is.null(x)) {x <- x[indices]}
-    y <- y[indices]
-  } else {indices <- 1:length(y)}
+  subset_temp <- take_subset(x = x, y = y, subset = subset)
+  if(length(subset_temp$y) == 0) {return(NA)}
   
   #remove nas
-  narm_temp <- rm_nas(x = x, y = y, na.rm = na.rm, stopifNA = TRUE)
-  
+  narm_temp <- rm_nas(x = subset_temp$x, y = subset_temp$y, 
+                      na.rm = na.rm, stopifNA = TRUE)
   if(length(narm_temp$y) == 0) {return(NA)}
   
   #reorder
@@ -3398,7 +3620,7 @@ find_threshold_crosses <- function(y, x = NULL, threshold,
     }
   
     #Change indices to account for subset being used
-    out_idx <- indices[out_idx]
+    out_idx <- subset_temp$indices[out_idx]
     
     return(out_idx[order(out_idx)])
     
@@ -3463,6 +3685,8 @@ please use find_threshold_crosses for more flexibility")
 #'             the end of the data)
 #' @param blank Value to be subtracted from \code{y} values before calculating
 #'              area under the curve
+#' @param subset A vector of logical values indicating which x and y values
+#'               should be included (TRUE) or excluded (FALSE).
 #' @param na.rm a logical indicating whether missing values should be removed
 #' @param neg.rm a logical indicating whether \code{y} values below zero should 
 #'               be treated as zeros. If \code{FALSE}, area under the curve
@@ -3476,15 +3700,20 @@ please use find_threshold_crosses for more flexibility")
 #' @return A scalar for the total area under the curve
 #'             
 #' @export
-auc <- function(x, y, xlim = NULL, blank = 0, na.rm = TRUE, neg.rm = FALSE) {
+auc <- function(x, y, xlim = NULL, blank = 0, subset = NULL,
+                na.rm = TRUE, neg.rm = FALSE) {
   if(!is.vector(x)) {stop(paste("x is not a vector, it is class:", class(x)))}
   if(!is.vector(y)) {stop(paste("y is not a vector, it is class:", class(y)))}
   
   x <- make.numeric(x)
   y <- make.numeric(y)
   
+  #take subset
+  subset_temp <- take_subset(x = x, y = y, subset = subset)
+  
   #remove nas
-  dat <- rm_nas(x = x, y = y, na.rm = na.rm, stopifNA = TRUE)
+  dat <- rm_nas(x = subset_temp$x, y = subset_temp$y, 
+                na.rm = na.rm, stopifNA = TRUE)
   
   if(length(dat$y) <= 1) {return(NA)}
   
@@ -3616,7 +3845,7 @@ lag_time <- function(x = NULL, y = NULL, deriv = NULL,
   
   if(trans_y == "log") {
     if(!is.null(y) && length(y) > 0) {
-      caught_log <- myTryCatch(log(y))
+      caught_log <- gcTryCatch(log(y))
       if(!is.null(caught_log$warning)) {
         warning(paste("during log-transformation,", caught_log$warning))
         caught_log$value[is.nan(caught_log$value)] <- NA}

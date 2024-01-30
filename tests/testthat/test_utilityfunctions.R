@@ -1,15 +1,15 @@
 library(testthat)
 library(gcplyr)
 
-test_that("checkdim_inputs returns correct length", {
-  expect_equal(checkdim_inputs("A", "test_name", needed_len = 5), 
+test_that("check_input_dimensions returns correct length", {
+  expect_equal(check_input_dimensions("A", "test_name", needed_len = 5), 
                rep("A", 5))
-  expect_equal(checkdim_inputs(rep("A", 5), "test_name", needed_len = 5), 
+  expect_equal(check_input_dimensions(rep("A", 5), "test_name", needed_len = 5), 
                rep("A", 5))
 })
 
-test_that("checkdim_inputs returns error when appropriate", {
-  expect_error(checkdim_inputs(rep("A", 2), "test_name", needed_len = 5))
+test_that("check_input_dimensions returns error when appropriate", {
+  expect_error(check_input_dimensions(rep("A", 2), "test_name", needed_len = 5))
 })
 
 test_that("uninterleave returns correct output", {
@@ -137,3 +137,23 @@ test_that("which_min_gc and which_max_gc return correctly", {
   expect_equal(which_max_gc(c(NA, NA), empty_NA = FALSE), which.max(c(NA, NA)))
 })
   
+test_that("extr_val returns correctly", {
+  expect_equal(extr_val(1:10, 2), 2)
+  expect_equal(extr_val(1:10, 11), as.numeric(NA))
+  expect_equal(extr_val(1:10, 0), c(1:10)[0])
+  expect_equal(extr_val(1:10, -2), c(1, 3:10))
+  expect_equal(extr_val(c(1:5, c(NA, NA), 8:10), 5), 5)
+  expect_equal(extr_val(c(1:5, c(NA, NA), 8:10), 7), 9)
+  expect_equal(extr_val(c(NA, NA, NA), 2), NA)
+})
+
+test_that("take_subset returns correctly", {
+  expect_equal(take_subset(x = 1:10, subset = c(T, T, T, F, F, T, T, T, T, T)),
+               list(x = c(1, 2, 3, 6:10), y = NULL, indices = c(1:3, 6:10)))
+  expect_equal(take_subset(y = 1:10, subset = c(T, T, T, T, T, T, T, T, F, F)),
+                 list(x = NULL, y = 1:8, indices = c(1:8)))
+  expect_warning(take_subset(y = 1:10, subset = c(T, T, T, T, T, T, T, T, NA, F)),
+                 "subset contains NA's")
+  expect_equal(take_subset(x = 1:10, subset = NULL),
+               list(x = 1:10, y = NULL, indices = 1:10))
+})

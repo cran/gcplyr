@@ -13,7 +13,7 @@
 <meta name="author" content="Mike Blazanin" />
 
 
-<title>Incorporating design information</title>
+<title>Incorporating experimental designs</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -337,7 +337,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 
-<h1 class="title toc-ignore">Incorporating design information</h1>
+<h1 class="title toc-ignore">Incorporating experimental designs</h1>
 <h4 class="author">Mike Blazanin</h4>
 
 
@@ -379,8 +379,8 @@ block-shaped designs to a single file</a></li>
 </ul></li>
 </ul></li>
 </ul></li>
-<li><a href="#merging-spectrophotometric-and-design-data" id="toc-merging-spectrophotometric-and-design-data">Merging
-spectrophotometric and design data</a></li>
+<li><a href="#merging-growth-curve-data-with-designs" id="toc-merging-growth-curve-data-with-designs">Merging growth curve
+data with designs</a></li>
 <li><a href="#whats-next" id="toc-whats-next">What’s next?</a></li>
 </ul>
 </div>
@@ -389,9 +389,9 @@ spectrophotometric and design data</a></li>
 <h1>Where are we so far?</h1>
 <ol style="list-style-type: decimal">
 <li>Introduction: <code>vignette(&quot;gc01_gcplyr&quot;)</code></li>
-<li>Importing and transforming data:
-<code>vignette(&quot;gc02_import_transform&quot;)</code></li>
-<li><strong>Incorporating design information:</strong>
+<li>Importing and reshaping data:
+<code>vignette(&quot;gc02_import_reshape&quot;)</code></li>
+<li><strong>Incorporating experimental designs:</strong>
 <code>vignette(&quot;gc03_incorporate_designs&quot;)</code></li>
 <li>Pre-processing and plotting your data:
 <code>vignette(&quot;gc04_preprocess_plot&quot;)</code></li>
@@ -549,8 +549,8 @@ filenames, or relative file paths) and will return a
 R.</p>
 <p>Once these design elements have been read into the <code>R</code>
 environment, you won’t need to transform them. So you can skip down to
-learning how to merge them with your data in the <strong><a href="#merging-spectrophotometric-and-design-data">Merging
-spectrophotometric and design data</a></strong> section.</p>
+learning how to merge them with your data in the <strong>[Merging
+spectrophotometric and design data]</strong> section.</p>
 </div>
 </div>
 <div id="generating-designs-in-r" class="section level1">
@@ -1150,8 +1150,8 @@ file, and the metadata has been added in rows before each block.</p>
 </div>
 </div>
 </div>
-<div id="merging-spectrophotometric-and-design-data" class="section level1">
-<h1>Merging spectrophotometric and design data</h1>
+<div id="merging-growth-curve-data-with-designs" class="section level1">
+<h1>Merging growth curve data with designs</h1>
 <p>Once we have both our design and data in <code>R</code> and
 tidy-shaped, we can merge them using <code>merge_dfs</code>.</p>
 <p>For this, we’ll use the data in the
@@ -1350,21 +1350,31 @@ tidy-shaped.</p>
 <span id="cb22-20"><a href="#cb22-20" tabindex="-1"></a><span class="co">#&gt; 18   B6       Strain 12    No Phage</span></span>
 <span id="cb22-21"><a href="#cb22-21" tabindex="-1"></a><span class="co">#&gt; 19   B7        Strain 7 Phage Added</span></span>
 <span id="cb22-22"><a href="#cb22-22" tabindex="-1"></a><span class="co">#&gt; 20   B8        Strain 8 Phage Added</span></span></code></pre></div>
+<p>Note for future use, this design is actually included with
+<code>gcplyr</code> for easy reference:</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" tabindex="-1"></a><span class="fu">head</span>(example_design_tidy)</span>
+<span id="cb23-2"><a href="#cb23-2" tabindex="-1"></a><span class="co">#&gt;   Well Bacteria_strain    Phage</span></span>
+<span id="cb23-3"><a href="#cb23-3" tabindex="-1"></a><span class="co">#&gt; 1   A1        Strain 1 No Phage</span></span>
+<span id="cb23-4"><a href="#cb23-4" tabindex="-1"></a><span class="co">#&gt; 2   A2        Strain 2 No Phage</span></span>
+<span id="cb23-5"><a href="#cb23-5" tabindex="-1"></a><span class="co">#&gt; 3   A3        Strain 3 No Phage</span></span>
+<span id="cb23-6"><a href="#cb23-6" tabindex="-1"></a><span class="co">#&gt; 4   A4        Strain 4 No Phage</span></span>
+<span id="cb23-7"><a href="#cb23-7" tabindex="-1"></a><span class="co">#&gt; 5   A5        Strain 5 No Phage</span></span>
+<span id="cb23-8"><a href="#cb23-8" tabindex="-1"></a><span class="co">#&gt; 6   A6        Strain 6 No Phage</span></span></code></pre></div>
 <p>And finally, we merge the two using <code>merge_dfs</code>, saving
 the result to <code>ex_dat_mrg</code>, short for example_data_merged.
 <code>merge_dfs</code> merges using columns with the same name between
 the two data.frames.</p>
-<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">merge_dfs</span>(example_tidydata, example_design)</span>
-<span id="cb23-2"><a href="#cb23-2" tabindex="-1"></a><span class="co">#&gt; Joining with `by = join_by(Well)`</span></span>
-<span id="cb23-3"><a href="#cb23-3" tabindex="-1"></a></span>
-<span id="cb23-4"><a href="#cb23-4" tabindex="-1"></a><span class="fu">head</span>(ex_dat_mrg)</span>
-<span id="cb23-5"><a href="#cb23-5" tabindex="-1"></a><span class="co">#&gt;   Time Well Measurements Bacteria_strain    Phage</span></span>
-<span id="cb23-6"><a href="#cb23-6" tabindex="-1"></a><span class="co">#&gt; 1    0   A1        0.002        Strain 1 No Phage</span></span>
-<span id="cb23-7"><a href="#cb23-7" tabindex="-1"></a><span class="co">#&gt; 2    0   B1        0.002        Strain 7 No Phage</span></span>
-<span id="cb23-8"><a href="#cb23-8" tabindex="-1"></a><span class="co">#&gt; 3    0   C1        0.002       Strain 13 No Phage</span></span>
-<span id="cb23-9"><a href="#cb23-9" tabindex="-1"></a><span class="co">#&gt; 4    0   D1        0.002       Strain 19 No Phage</span></span>
-<span id="cb23-10"><a href="#cb23-10" tabindex="-1"></a><span class="co">#&gt; 5    0   E1        0.002       Strain 25 No Phage</span></span>
-<span id="cb23-11"><a href="#cb23-11" tabindex="-1"></a><span class="co">#&gt; 6    0   F1        0.002       Strain 31 No Phage</span></span></code></pre></div>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">merge_dfs</span>(example_tidydata, example_design)</span>
+<span id="cb24-2"><a href="#cb24-2" tabindex="-1"></a><span class="co">#&gt; Joining, by = &quot;Well&quot;</span></span>
+<span id="cb24-3"><a href="#cb24-3" tabindex="-1"></a></span>
+<span id="cb24-4"><a href="#cb24-4" tabindex="-1"></a><span class="fu">head</span>(ex_dat_mrg)</span>
+<span id="cb24-5"><a href="#cb24-5" tabindex="-1"></a><span class="co">#&gt;   Time Well Measurements Bacteria_strain    Phage</span></span>
+<span id="cb24-6"><a href="#cb24-6" tabindex="-1"></a><span class="co">#&gt; 1    0   A1        0.002        Strain 1 No Phage</span></span>
+<span id="cb24-7"><a href="#cb24-7" tabindex="-1"></a><span class="co">#&gt; 2    0   B1        0.002        Strain 7 No Phage</span></span>
+<span id="cb24-8"><a href="#cb24-8" tabindex="-1"></a><span class="co">#&gt; 3    0   C1        0.002       Strain 13 No Phage</span></span>
+<span id="cb24-9"><a href="#cb24-9" tabindex="-1"></a><span class="co">#&gt; 4    0   D1        0.002       Strain 19 No Phage</span></span>
+<span id="cb24-10"><a href="#cb24-10" tabindex="-1"></a><span class="co">#&gt; 5    0   E1        0.002       Strain 25 No Phage</span></span>
+<span id="cb24-11"><a href="#cb24-11" tabindex="-1"></a><span class="co">#&gt; 6    0   F1        0.002       Strain 31 No Phage</span></span></code></pre></div>
 </div>
 <div id="whats-next" class="section level1">
 <h1>What’s next?</h1>
@@ -1372,9 +1382,9 @@ the two data.frames.</p>
 plot your data</p>
 <ol style="list-style-type: decimal">
 <li>Introduction: <code>vignette(&quot;gc01_gcplyr&quot;)</code></li>
-<li>Importing and transforming data:
-<code>vignette(&quot;gc02_import_transform&quot;)</code></li>
-<li>Incorporating design information:
+<li>Importing and reshaping data:
+<code>vignette(&quot;gc02_import_reshape&quot;)</code></li>
+<li>Incorporating experimental designs:
 <code>vignette(&quot;gc03_incorporate_designs&quot;)</code></li>
 <li><strong>Pre-processing and plotting your data:
 <code>vignette(&quot;gc04_preprocess_plot&quot;)</code></strong></li>

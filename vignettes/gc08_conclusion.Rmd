@@ -22,8 +22,8 @@ knitr::opts_knit$set(root.dir = tempdir())
 # Where are we so far?
 
 1. Introduction: `vignette("gc01_gcplyr")`
-2. Importing and transforming data: `vignette("gc02_import_transform")`
-3. Incorporating design information: `vignette("gc03_incorporate_designs")`
+2. Importing and reshaping data: `vignette("gc02_import_reshape")`
+3. Incorporating experimental designs: `vignette("gc03_incorporate_designs")`
 4. Pre-processing and plotting your data: `vignette("gc04_preprocess_plot")`
 5. Processing your data: `vignette("gc05_process")`
 6. Analyzing your data: `vignette("gc06_analyze")`
@@ -47,19 +47,7 @@ library(ggplot2)
 # Here we're re-running it so it's available for us to work with
 example_tidydata <- trans_wide_to_tidy(example_widedata_noiseless,
                                        id_cols = "Time")
-example_design <- make_design(
-  pattern_split = ",", nrows = 8, ncols = 12,
-  "Bacteria_strain" = make_designpattern(
-    values = paste("Strain", 1:48),
-    rows = 1:8, cols = 1:6, pattern = 1:48, byrow = TRUE),
-  "Bacteria_strain" = make_designpattern(
-    values = paste("Strain", 1:48),
-    rows = 1:8, cols = 7:12, pattern = 1:48, byrow = TRUE),
-  "Phage" = make_designpattern(
-    values = c("No Phage"), rows = 1:8, cols = 1:6, pattern = "1"),
-  "Phage" = make_designpattern(
-    values = c("Phage Added"), rows = 1:8, cols = 7:12, pattern = "1"))
-ex_dat_mrg <- merge_dfs(example_tidydata, example_design)
+ex_dat_mrg <- merge_dfs(example_tidydata, example_design_tidy)
 ex_dat_mrg$Well <- 
   factor(ex_dat_mrg$Well,
          levels = paste(rep(LETTERS[1:8], each = 12), 1:12, sep = ""))
@@ -199,37 +187,45 @@ ggplot(data = growth_and_antibiotics,
 There is! We can see that the antibiotic resistant strains (`TRUE`) have a smaller area-under-the-curve than the antibiotic sensitive strains (`FALSE`) (although, to be fair, I did simulate the data so we'd get that result).
 
 # Other growth curve analysis packages
-A number of other `R` packages besides `gcplyr` facilitate analysis of growth curves data.
+A number of other software tools besides `gcplyr` facilitate analysis of growth curves data or data wrangling of plate reader data. Here I'll provide some brief notes on how gcplyr compares to these other tools, for a more detailed comparison please see: [Blazanin, M. "gcplyr: an R package for microbial growth curve data analysis." bioRxiv (2023)](https://doi.org/10.1101/2023.04.30.538883)
 
 There are, broadly speaking, two ways to analyze growth curves data:
 
 1. directly quantify attributes of the growth dynamics
 2. fit the growth dynamics with a mathematical model, then extract parameters from the fitted model
 
-While `gcplyr` focuses on manipulation of growth curves data and the first analysis approach (direct quantification of growth curves dynamics), many other `R` packages focus on fitting growth dynamics with a mathematical model.
+While `gcplyr` and some other `R` packages focus on the first analysis approach (direct quantification of growth curves dynamics), many other `R` packages focus on fitting growth dynamics with a mathematical model.
 
 Generally, fitting growth dynamics with a model has greater power to accurately quantify the underlying traits. However, it also takes much more effort to be rigorous when fitting data with a model. You have to carefully choose a model whose assumptions your data meet. You also have to evaluate the fits to ensure that the optimization algorithms arrived on reasonable solutions. 
 
-A number of `R` packages implement fitting-style approaches, which I list here for readers to explore on their own. At some point in the future, I hope to incorporate more direct examples of how to use tidy-shaped data imported and manipulated by `gcplyr` with these packages.
+Here are some other software tools for growth curve data analysis, for you to explore. I've italicized several tools which might be particularly compatible with `gcplyr` because they can import the tidy-shaped data that `gcplyr` generates.
 
 * [`growthcurver`](https://github.com/sprouffske/growthcurver)
-* [`QurvE`](https://nicwir.github.io/QurvE/)
-* `AUDIT` (including `growr` and `mtpview1`)
-* `growthrates`
-* `drc`
-* `opm`
-* `grofit`
-* `R-Biolog`
-* `growthmodels`
-* `cellGrowth`
-* `grofit`
-* `GCAT`
-* `CarboLogR`
+* *`growthrates`*
 * `biogrowth`
+* `opm`
+* *[`QurvE`](https://nicwir.github.io/QurvE/)*
+* *`AUDIT`*
+* `bletl`
+* `AMiGA`
+* `fitderiv`
+* `phenom`
+* `B-GREAT`
+* `PMAnalyzer`
+* `GrowthRates`
+* `GCAT`
+* `PRECOG`
+* `IPMP 2013`
+* `GATHODE`
+* `Microrisk Lab`
+* `CarboLogR`
+* `YODA`
+* `BGFit`
 
-Additionally, one `R` package doesn't implement fitting-style approaches, but does contain useful functionality for plate-reader data analysis:
+Additionally, some software doesn't analyze growth curve data, but does contain useful functionality for plate-reader data wrangling:
 
 * `plater`
+* `Parsley`
 
 # What's next?
 
@@ -238,8 +234,8 @@ You've finished all of the core documentation. Congratulations! `gcplyr` is a po
 If you'd like to read about how to work with multiple plates of data at once, check out our final vignette: `vignette("gc09_multiple_plates")`
 
 1. Introduction: `vignette("gc01_gcplyr")`
-2. Importing and transforming data: `vignette("gc02_import_transform")`
-3. Incorporating design information: `vignette("gc03_incorporate_designs")`
+2. Importing and reshaping data: `vignette("gc02_import_reshape")`
+3. Incorporating experimental designs: `vignette("gc03_incorporate_designs")`
 4. Pre-processing and plotting your data: `vignette("gc04_preprocess_plot")`
 5. Processing your data: `vignette("gc05_process")`
 6. Analyzing your data: `vignette("gc06_analyze")`

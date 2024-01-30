@@ -22,8 +22,8 @@ knitr::opts_knit$set(root.dir = tempdir())
 # Where are we so far?
 
 1. Introduction: `vignette("gc01_gcplyr")`
-2. Importing and transforming data: `vignette("gc02_import_transform")`
-3. Incorporating design information: `vignette("gc03_incorporate_designs")`
+2. Importing and reshaping data: `vignette("gc02_import_reshape")`
+3. Incorporating experimental designs: `vignette("gc03_incorporate_designs")`
 4. Pre-processing and plotting your data: `vignette("gc04_preprocess_plot")`
 5. **Processing your data:** `vignette("gc05_process")`
 6. Analyzing your data: `vignette("gc06_analyze")`
@@ -47,19 +47,7 @@ library(ggplot2)
 # Here we're re-running it so it's available for us to work with
 example_tidydata <- trans_wide_to_tidy(example_widedata_noiseless,
                                        id_cols = "Time")
-example_design <- make_design(
-  pattern_split = ",", nrows = 8, ncols = 12,
-  "Bacteria_strain" = make_designpattern(
-    values = paste("Strain", 1:48),
-    rows = 1:8, cols = 1:6, pattern = 1:48, byrow = TRUE),
-  "Bacteria_strain" = make_designpattern(
-    values = paste("Strain", 1:48),
-    rows = 1:8, cols = 7:12, pattern = 1:48, byrow = TRUE),
-  "Phage" = make_designpattern(
-    values = c("No Phage"), rows = 1:8, cols = 1:6, pattern = "1"),
-  "Phage" = make_designpattern(
-    values = c("Phage Added"), rows = 1:8, cols = 7:12, pattern = "1"))
-ex_dat_mrg <- merge_dfs(example_tidydata, example_design)
+ex_dat_mrg <- merge_dfs(example_tidydata, example_design_tidy)
 ex_dat_mrg$Well <- 
   factor(ex_dat_mrg$Well,
          levels = paste(rep(LETTERS[1:8], each = 12), 1:12, sep = ""))
@@ -170,7 +158,7 @@ ggplot(data = dplyr::filter(ex_dat_mrg, Well %in% sample_wells),
 
 These derivatives are very jumpy. Why? The same limited resolution of the plate reader has an amplified effect on the per-capita derivative when densities are very close to 0. Luckily, `calc_deriv` can calculate derives by fitting a linear regression to multiple points, reducing this jumpiness in the derivative.
 
-To use this fitting functionality of `calc_deriv`, specify either the `window_width` or `window_width_n` parameter. `window_width` specifies how wide the window used to include points for the fitting is in units of `x`, while `window_width_n` specifies it in number of data points. Here, we'll demonstrate with five data points.
+To use this fitting functionality of `calc_deriv`, specify either the `window_width` or `window_width_n` parameter. `window_width` specifies how wide the window used to include points for the fitting is in units of `x`, while `window_width_n` specifies it in number of data points. I recommend trying a `window_width_n` of three or five data points, since that works for most cases.
 
 For best practice, I recommend doing this fitting on log-transformed `y` values, since exponentially growing density values are linear when log-transformed. You can achieve this simply by setting `trans_y = 'log'`. With log-transformation, note that `calc_deriv` will return `NA` for any data points where the reading is equal to or below your `blank` value.
 
@@ -208,8 +196,8 @@ head(ex_dat_mrg)
 Now that you've processed your data, you're ready to analyze it! 
 
 1. Introduction: `vignette("gc01_gcplyr")`
-2. Importing and transforming data: `vignette("gc02_import_transform")`
-3. Incorporating design information: `vignette("gc03_incorporate_designs")`
+2. Importing and reshaping data: `vignette("gc02_import_reshape")`
+3. Incorporating experimental designs: `vignette("gc03_incorporate_designs")`
 4. Pre-processing and plotting your data: `vignette("gc04_preprocess_plot")`
 5. Processing your data: `vignette("gc05_process")`
 6. **Analyzing your data: `vignette("gc06_analyze")`**

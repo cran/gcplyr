@@ -6,7 +6,7 @@
 \usage{
 read_blocks(
   files,
-  extension = NULL,
+  filetype = NULL,
   startrow = NULL,
   endrow = NULL,
   startcol = NULL,
@@ -14,11 +14,16 @@ read_blocks(
   sheet = NULL,
   metadata = NULL,
   block_names = NULL,
-  block_name_header = "block_name",
+  block_names_header = "block_name",
+  block_names_dot = FALSE,
+  block_names_path = TRUE,
+  block_names_ext = FALSE,
   header = NA,
   sider = NA,
   wellnames_numeric = FALSE,
   na.strings = c("NA", ""),
+  extension,
+  block_name_header,
   ...
 )
 }
@@ -26,12 +31,17 @@ read_blocks(
 \item{files}{A vector of filepaths relative to the current working directory
 where each filepath is a single plate read}
 
-\item{extension}{(optional) the extension of the files:
-"csv", "xls", or "xlsx", or "tbl" for use of read.table
+\item{filetype}{(optional) the type(s) of the files. Options include:
 
-If none provided, \code{read_blocks} will infer file extension from
-provided filenames. When extension is not "csv", "xls", or
-"xlsx" will use \code{utils::read.table}}
+                 "csv", "xls", or "xlsx".
+                 
+                 "tbl" or "table" to use \code{read.table} to read the file,
+                 "csv2" to use \code{read.csv2}, "delim" to 
+                 use \code{read.delim}, or "delim2" to use \code{read.delim2}.
+                 
+                 If none provided, \code{read_blocks} will infer filetype(s) 
+                 from the extension(s) in \code{files}. When extension is 
+                 not "csv", "xls", or "xlsx", will use "table".}
 
 \item{startrow, endrow, startcol, endcol}{(optional) the rows and columns where 
 the measures data are located in \code{files}.
@@ -68,8 +78,17 @@ when reading multiple blocks from a single file.)}
 in \code{files}. If not provided, block_names are inferred
 from the filenames}
 
-\item{block_name_header}{The name of the metadata field containing the
+\item{block_names_header}{The name of the metadata field containing the
 \code{block_names}}
+
+\item{block_names_dot}{If block_names are inferred from filenames, should 
+the leading './' (if any) be retained}
+
+\item{block_names_path}{If block_names are inferred from filenames, should 
+the path (if any) be retained}
+
+\item{block_names_ext}{If block_names are inferred from filenames, should 
+the file extension (if any) be retained}
 
 \item{header}{\code{TRUE}, \code{FALSE}, or \code{NA}, or a vector of
 such values, indicating whether the file(s) contains the
@@ -102,6 +121,12 @@ lettered A through Z, while columns will be numbered}
 as \code{NA} values by \code{utils::read.csv},
 \code{readxl::read_xls}, \code{readxl::read_xlsx},
 or \code{utils::read.table}}
+
+\item{extension}{Allowed for backward compatibility; \code{filetype} is
+now the preferred argument name.}
+
+\item{block_name_header}{Allowed for backward compatibility; 
+\code{block_names_header} is now the preferred argument name.}
 
 \item{...}{Other arguments passed to \code{utils::read.csv},
 \code{readxl::read_xls}, \code{readxl::read_xlsx},

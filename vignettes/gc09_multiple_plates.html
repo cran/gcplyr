@@ -376,9 +376,9 @@ design</a></li>
 <h1>Where are we so far?</h1>
 <ol style="list-style-type: decimal">
 <li>Introduction: <code>vignette(&quot;gc01_gcplyr&quot;)</code></li>
-<li>Importing and transforming data:
-<code>vignette(&quot;gc02_import_transform&quot;)</code></li>
-<li>Incorporating design information:
+<li>Importing and reshaping data:
+<code>vignette(&quot;gc02_import_reshape&quot;)</code></li>
+<li>Incorporating experimental designs:
 <code>vignette(&quot;gc03_incorporate_designs&quot;)</code></li>
 <li>Pre-processing and plotting your data:
 <code>vignette(&quot;gc04_preprocess_plot&quot;)</code></li>
@@ -561,17 +561,17 @@ list into <code>trans_wide_to_tidy</code>.</p>
 <p>If you don’t have any designs to merge, you can collapse this list
 into a single <code>data.frame</code> with <code>merge_dfs</code>:</p>
 <div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>tidy_plates_collapsed <span class="ot">&lt;-</span> <span class="fu">merge_dfs</span>(tidy_plates, <span class="at">collapse =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co">#&gt; Joining with `by = join_by(file, Experiment, Start_date, Time, Well,</span></span>
-<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="co">#&gt; Measurements)`</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co">#&gt; Joining, by = c(&quot;file&quot;, &quot;Experiment&quot;, &quot;Start_date&quot;, &quot;Time&quot;, &quot;Well&quot;,</span></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="co">#&gt; &quot;Measurements&quot;)</span></span>
 <span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a></span>
 <span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="fu">print_df</span>(<span class="fu">head</span>(tidy_plates_collapsed), <span class="at">col.names =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="co">#&gt; file Experiment Start_date Time Well Measurements</span></span>
-<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 A1 0.002</span></span>
-<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 B1 0.002</span></span>
-<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 C1 0.002</span></span>
-<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 D1 0.002</span></span>
-<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 E1 0.002</span></span>
-<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 F1 0.002</span></span></code></pre></div>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 A1 0.002</span></span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 B1 0.002</span></span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 C1 0.002</span></span>
+<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 D1 0.002</span></span>
+<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 E1 0.002</span></span>
+<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 F1 0.002</span></span></code></pre></div>
 </div>
 <div id="merging-designs-with-multiple-plates" class="section level1">
 <h1>Merging designs with multiple plates</h1>
@@ -597,20 +597,20 @@ merge them with each plate separately using brackets:</p>
 <span id="cb12-16"><a href="#cb12-16" tabindex="-1"></a>    <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">7</span><span class="sc">:</span><span class="dv">12</span>, <span class="at">pattern =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>, <span class="at">byrow =</span> <span class="cn">TRUE</span>))</span>
 <span id="cb12-17"><a href="#cb12-17" tabindex="-1"></a></span>
 <span id="cb12-18"><a href="#cb12-18" tabindex="-1"></a>tidy_plates[[<span class="dv">1</span>]] <span class="ot">&lt;-</span> <span class="fu">merge_dfs</span>(tidy_plates[[<span class="dv">1</span>]], example_design1)</span>
-<span id="cb12-19"><a href="#cb12-19" tabindex="-1"></a><span class="co">#&gt; Joining with `by = join_by(Well)`</span></span>
+<span id="cb12-19"><a href="#cb12-19" tabindex="-1"></a><span class="co">#&gt; Joining, by = &quot;Well&quot;</span></span>
 <span id="cb12-20"><a href="#cb12-20" tabindex="-1"></a>tidy_plates[[<span class="dv">2</span>]] <span class="ot">&lt;-</span> <span class="fu">merge_dfs</span>(tidy_plates[[<span class="dv">2</span>]], example_design2)</span>
-<span id="cb12-21"><a href="#cb12-21" tabindex="-1"></a><span class="co">#&gt; Joining with `by = join_by(Well)`</span></span></code></pre></div>
+<span id="cb12-21"><a href="#cb12-21" tabindex="-1"></a><span class="co">#&gt; Joining, by = &quot;Well&quot;</span></span></code></pre></div>
 <p>Then afterwards, you can collapse your data together:</p>
 <div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>data_and_designs <span class="ot">&lt;-</span> <span class="fu">merge_dfs</span>(tidy_plates, <span class="at">collapse =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="co">#&gt; Joining with `by = join_by(file, Experiment, Start_date, Time, Well,</span></span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co">#&gt; Measurements, Bacteria_strain)`</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="co">#&gt; Joining, by = c(&quot;file&quot;, &quot;Experiment&quot;, &quot;Start_date&quot;, &quot;Time&quot;, &quot;Well&quot;,</span></span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co">#&gt; &quot;Measurements&quot;, &quot;Bacteria_strain&quot;)</span></span>
 <span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="fu">print_df</span>(<span class="fu">head</span>(data_and_designs))</span>
-<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 A1 0.002  Strain 1</span></span>
-<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 B1 0.002  Strain 7</span></span>
-<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 C1 0.002 Strain 13</span></span>
-<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 D1 0.002 Strain 19</span></span>
-<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 E1 0.002 Strain 25</span></span>
-<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 F1 0.002 Strain 31</span></span></code></pre></div>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 A1 0.002  Strain 1</span></span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 B1 0.002  Strain 7</span></span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 C1 0.002 Strain 13</span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 D1 0.002 Strain 19</span></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 E1 0.002 Strain 25</span></span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 F1 0.002 Strain 31</span></span></code></pre></div>
 </div>
 <div id="plates-with-a-shared-design" class="section level2">
 <h2>Plates with a shared design</h2>
@@ -629,16 +629,16 @@ differentiate the separate plates you read in.</p>
 <span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a>    <span class="at">rows =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">cols =</span> <span class="dv">7</span><span class="sc">:</span><span class="dv">12</span>, <span class="at">pattern =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>, <span class="at">byrow =</span> <span class="cn">TRUE</span>))</span>
 <span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a></span>
 <span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a>data_and_designs <span class="ot">&lt;-</span> <span class="fu">merge_dfs</span>(tidy_plates, example_design, <span class="at">collapse =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a><span class="co">#&gt; Joining with `by = join_by(file, Experiment, Start_date, Time, Well,</span></span>
-<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="co">#&gt; Measurements, Bacteria_strain)`</span></span>
-<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a><span class="co">#&gt; Joining with `by = join_by(Well, Bacteria_strain)`</span></span>
+<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a><span class="co">#&gt; Joining, by = c(&quot;file&quot;, &quot;Experiment&quot;, &quot;Start_date&quot;, &quot;Time&quot;, &quot;Well&quot;,</span></span>
+<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="co">#&gt; &quot;Measurements&quot;, &quot;Bacteria_strain&quot;)</span></span>
+<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a><span class="co">#&gt; Joining, by = c(&quot;Well&quot;, &quot;Bacteria_strain&quot;)</span></span>
 <span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a><span class="fu">print_df</span>(<span class="fu">head</span>(data_and_designs))</span>
-<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 A1 0.002  Strain 1</span></span>
-<span id="cb14-16"><a href="#cb14-16" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 B1 0.002  Strain 7</span></span>
-<span id="cb14-17"><a href="#cb14-17" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 C1 0.002 Strain 13</span></span>
-<span id="cb14-18"><a href="#cb14-18" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 D1 0.002 Strain 19</span></span>
-<span id="cb14-19"><a href="#cb14-19" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 E1 0.002 Strain 25</span></span>
-<span id="cb14-20"><a href="#cb14-20" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2023-11-03 0 F1 0.002 Strain 31</span></span></code></pre></div>
+<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 A1 0.002  Strain 1</span></span>
+<span id="cb14-16"><a href="#cb14-16" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 B1 0.002  Strain 7</span></span>
+<span id="cb14-17"><a href="#cb14-17" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 C1 0.002 Strain 13</span></span>
+<span id="cb14-18"><a href="#cb14-18" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 D1 0.002 Strain 19</span></span>
+<span id="cb14-19"><a href="#cb14-19" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 E1 0.002 Strain 25</span></span>
+<span id="cb14-20"><a href="#cb14-20" tabindex="-1"></a><span class="co">#&gt; widedata Experiment_1 2024-01-29 0 F1 0.002 Strain 31</span></span></code></pre></div>
 </div>
 </div>
 
