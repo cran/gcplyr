@@ -22,6 +22,11 @@ test_that("auc returns correctly with xlim", {
   expect_equal(auc(x = 1:10, y = (1:10)**2, xlim = c(2, NA)), 332)
   expect_equal(auc(x = 1:10, y = (1:10)**2, xlim = c(NA, 7)), 115)
   expect_error(auc(x = 1:10, y = (1:10)**2, xlim = c(NA, NA)))
+  expect_warning(auc(x = 2:8, y = (2:8)**2, xlim = c(1, 8)),
+                 "xlim specifies lower limit below the range of x")
+  expect_warning(auc(x = 2:8, y = (2:8)**2, xlim = c(2, 9)),
+                 "xlim specifies upper limit above the range of x")
+  expect_equal(auc(x = 1:10, y = c(NA, (2:9)**2, NA), xlim = c(1, 10)), 241.5)
 })
 
 test_that("lag_time returns correctly", {
@@ -58,7 +63,7 @@ test_that("lag_time returns correctly", {
     abline(h = m)
   }
   
-  #Data has lots of NA's
+  #y data has lots of NA's
   dat <- data.frame(x = 1:100, y = (-10):89, grp = rep("A", 100))
   dat <- mutate(group_by(dat, grp), 
                 deriv = calc_deriv(x = x, y = y, percapita = TRUE, blank = 0))
@@ -68,28 +73,28 @@ test_that("lag_time returns correctly", {
     "infinite values")
   expect_equal(lag, 12)
   
-  #Data is nearly all NAs
+  #y data is nearly all NAs
   dat <- data.frame(x = 1:10, y = c(1, rep(NA, 8), 100), grp = rep("A", 10))
   dat <- mutate(group_by(dat, grp), 
                 deriv = calc_deriv(x = x, y = y, percapita = TRUE, blank = 0))
   expect_equal(lag_time(x = dat$x, y = dat$y, deriv = dat$deriv),
-               NA)
+               1)
   dat <- data.frame(x = 1:10, y = c(1, rep(NA, 7), 81, 100), grp = rep("A", 10))
   dat <- mutate(group_by(dat, grp), 
                 deriv = calc_deriv(x = x, y = y, percapita = TRUE, blank = 0))
   expect_equal(lag_time(x = dat$x, y = dat$y, deriv = dat$deriv),
                1)
   
-  #Data is all NAs
+  #y data is all NAs
   dat <- data.frame(x = 1:10, y = rep(NA, 10), deriv = 1:10)
   expect_equal(lag_time(x = dat$x, y = dat$y, deriv = dat$deriv),
-               NA)
+               as.numeric(NA))
   
   #All y values are 0
   dat <- data.frame(x = 1:10, y = rep(0, 10), deriv = 1:10)
   expect_warning(lag <- lag_time(x = dat$x, y = dat$y, deriv = dat$deriv),
                  "infinite values created")
-  expect_equal(lag, NA)
+  expect_equal(lag, as.numeric(NA))
   
   #All deriv are 0
   dat <- data.frame(x = 1:10, y = 1:10, deriv = rep(0, 10))
@@ -102,6 +107,34 @@ test_that("lag_time returns correctly", {
   expect_warning(lag <- lag_time(x = dat$x, y = dat$y, deriv = dat$deriv),
                  "multiple timepoints have")
   expect_equal(lag, 1)
+  
+  #Deriv has NA values where min(y) is
+  dat <- data.frame(x = 1:10, y = exp(1:10), deriv = c(NA, 1, rep(0.9, 8)))
+  expect_equal(lag_time(x = dat$x, y = dat$y, deriv = dat$deriv), 1)
+  
+  #min(y) occurs where x is NA
+  dat <- data.frame(x = c(NA, 2:10), y = exp(1:10), deriv = 1:10)
+  expect_warning(lag_time(x = dat$x, y = dat$y, deriv = dat$deriv),
+                 regexp = "min\\(y\\) does not equal min")
+  
+  #lag time is less than min(x)
+  dat <- data.frame(x = 1:10, y = exp(1:10), deriv = c(NA, 0.5, rep(0.1, 8)))
+  expect_warning(lag <- lag_time(x = dat$x, y = dat$y, deriv = dat$deriv),
+                 regexp = "indicating no identifiable lag phase")
+  expect_equal(lag, 0)
+  
+  #lag time is less than min(x[!is.na(y)])
+  dat <- data.frame(x = 1:10, y = c(NA, exp(2:10)), 
+                    deriv = c(NA, NA, 0.8, rep(0.1, 7)))
+  expect_warning(lag <- lag_time(x = dat$x, y = dat$y, deriv = dat$deriv),
+                 regexp = "indicating no identifiable lag phase")
+  expect_equal(lag, 1.75)
+  
+  #na.rm = FALSE
+  dat <- data.frame(x = 1:10, y = c(NA, exp(2:10)), 
+                    deriv = c(NA, NA, 0.8, rep(0.1, 7)))
+  expect_equal(lag_time(x = dat$x, y = dat$y, deriv = dat$deriv, na.rm = FALSE),
+               as.numeric(NA))
 })
 
 test_that("doubling_time returns correctly", {
@@ -151,10 +184,16 @@ test_that("find_local_extrema works correctly", {
                                   window_width_n = 5),
                c(2, 12))
   expect_equal(find_local_extrema(y = dat$y, return_minima = FALSE,
+                                  window_width_n_frac = 0.25),
+               c(2, 12))
+  expect_equal(find_local_extrema(y = dat$y, return_minima = FALSE,
                                   window_height = 3),
                c(2, 12))
   expect_equal(find_local_extrema(y = dat$y, return_minima = FALSE,
                                   window_width_n = 13),
+               12)
+  expect_equal(find_local_extrema(y = dat$y, return_minima = FALSE,
+                                  window_width_n_frac = 13/nrow(dat)),
                12)
   expect_equal(find_local_extrema(y = dat$y, return_minima = FALSE,
                                   window_height = 5),
@@ -166,10 +205,16 @@ test_that("find_local_extrema works correctly", {
                                   window_width_n = 5),
                c(9, 19))
   expect_equal(find_local_extrema(x = dat$x, y = dat$y, return_minima = FALSE,
+                                  window_width_n_frac = 5/nrow(dat)),
+               c(9, 19))
+  expect_equal(find_local_extrema(x = dat$x, y = dat$y, return_minima = FALSE,
                                   window_height = 3),
                c(9, 19))
   expect_equal(find_local_extrema(x = dat$x, y = dat$y, return_minima = FALSE,
                                   window_width_n = 13),
+               19)
+  expect_equal(find_local_extrema(x = dat$x, y = dat$y, return_minima = FALSE,
+                                  window_width_n_frac = 13/nrow(dat)),
                19)
   expect_equal(find_local_extrema(x = dat$x, y = dat$y, return_minima = FALSE,
                                   window_height = 5),

@@ -34,35 +34,13 @@ ex_dat_mrg <- dplyr::select(ex_dat_mrg,
                             Time, Well, Measurements, Bacteria_strain, Phage,
                             deriv, deriv_percap5)
 
-## ---- include = FALSE---------------------------------------------------------
+## ----include = FALSE----------------------------------------------------------
 # Here we're only keeping the wells that at one point or another in
 # this vignette we visualize. This cuts down on vignette build time
 # with no visual indication of the change
 ex_dat_mrg <- dplyr::filter(ex_dat_mrg, Well %in% c("A1", "A7", "B4", "B10", 
                                                     "B5", "B11", "F1", "E11", 
                                                     "F10", "A4", "E2", "H8"))
-
-## -----------------------------------------------------------------------------
-ex_dat_mrg_sum <- 
-  summarize(group_by(ex_dat_mrg, Bacteria_strain, Phage, Well),
-            min_dens = min_gc(Measurements, na.rm = TRUE),
-            min_time = extr_val(Time, which_min_gc(Measurements)))
-head(ex_dat_mrg_sum)
-
-ggplot(data = dplyr::filter(ex_dat_mrg, Well %in% sample_wells),
-       aes(x = Time, y = Measurements)) +
-  geom_line() +
-  facet_wrap(~Well) +
-  geom_point(data = dplyr::filter(ex_dat_mrg_sum, Well %in% sample_wells), 
-             aes(x = min_time, y = min_dens),
-             size = 2, color = "red")
-
-## -----------------------------------------------------------------------------
-ex_dat_mrg_sum <- 
-  summarize(group_by(ex_dat_mrg, Bacteria_strain, Phage, Well),
-            min_dens = first_minima(y = Measurements, x = Time, return = "y"),
-            min_time = first_minima(y = Measurements, x = Time, return = "x"))
-head(ex_dat_mrg_sum)
 
 ## -----------------------------------------------------------------------------
 ex_dat_mrg_sum <- 
@@ -117,6 +95,66 @@ ggplot(data = dplyr::filter(ex_dat_mrg, Well %in% sample_wells),
 ## -----------------------------------------------------------------------------
 ex_dat_mrg_sum <- 
   summarize(group_by(ex_dat_mrg, Bacteria_strain, Phage, Well),
+            max_percap = max_gc(deriv_percap5, na.rm = TRUE),
+            max_percap_time = extr_val(Time, which_max_gc(deriv_percap5)),
+            doub_time = doubling_time(y = max_percap))
+head(ex_dat_mrg_sum)
+
+ggplot(data = dplyr::filter(ex_dat_mrg, Well %in% sample_wells),
+       aes(x = Time, y = deriv_percap5)) +
+  geom_line() +
+  facet_wrap(~Well) +
+  geom_point(data = dplyr::filter(ex_dat_mrg_sum, Well %in% sample_wells), 
+             aes(x = max_percap_time, y = max_percap),
+             size = 2, color = "red") +
+  coord_cartesian(ylim = c(-1, NA))
+
+## -----------------------------------------------------------------------------
+ex_dat_mrg_sum <- 
+  summarize(group_by(ex_dat_mrg, Bacteria_strain, Phage, Well),
+            max_dens = max_gc(Measurements, na.rm = TRUE),
+            max_time = extr_val(Time, which_max_gc(Measurements)))
+head(ex_dat_mrg_sum)
+
+ggplot(data = dplyr::filter(ex_dat_mrg, Well %in% sample_wells),
+       aes(x = Time, y = Measurements)) +
+  geom_line() +
+  facet_wrap(~Well) +
+  geom_point(data = dplyr::filter(ex_dat_mrg_sum, Well %in% sample_wells), 
+             aes(x = max_time, y = max_dens),
+             size = 2, color = "red")
+
+## -----------------------------------------------------------------------------
+ex_dat_mrg_sum <-
+  summarize(group_by(ex_dat_mrg, Bacteria_strain, Phage, Well),
+            auc = auc(x = Time, y = Measurements))
+head(ex_dat_mrg_sum)
+
+## -----------------------------------------------------------------------------
+ex_dat_mrg_sum <- 
+  summarize(group_by(ex_dat_mrg, Bacteria_strain, Phage, Well),
+            min_dens = min_gc(Measurements, na.rm = TRUE),
+            min_time = extr_val(Time, which_min_gc(Measurements)))
+head(ex_dat_mrg_sum)
+
+ggplot(data = dplyr::filter(ex_dat_mrg, Well %in% sample_wells),
+       aes(x = Time, y = Measurements)) +
+  geom_line() +
+  facet_wrap(~Well) +
+  geom_point(data = dplyr::filter(ex_dat_mrg_sum, Well %in% sample_wells), 
+             aes(x = min_time, y = min_dens),
+             size = 2, color = "red")
+
+## -----------------------------------------------------------------------------
+ex_dat_mrg_sum <- 
+  summarize(group_by(ex_dat_mrg, Bacteria_strain, Phage, Well),
+            min_dens = first_minima(y = Measurements, x = Time, return = "y"),
+            min_time = first_minima(y = Measurements, x = Time, return = "x"))
+head(ex_dat_mrg_sum)
+
+## -----------------------------------------------------------------------------
+ex_dat_mrg_sum <- 
+  summarize(group_by(ex_dat_mrg, Bacteria_strain, Phage, Well),
             above_01 = first_above(y = Measurements, x = Time, 
                                    threshold = 0.1, return = "x"))
 head(ex_dat_mrg_sum)
@@ -146,23 +184,6 @@ ggplot(data = dplyr::filter(ex_dat_mrg, Well %in% sample_wells),
 ## -----------------------------------------------------------------------------
 ex_dat_mrg_sum <- 
   summarize(group_by(ex_dat_mrg, Bacteria_strain, Phage, Well),
-            max_percap = max_gc(deriv_percap5, na.rm = TRUE),
-            max_percap_time = extr_val(Time, which_max_gc(deriv_percap5)),
-            doub_time = doubling_time(y = max_percap))
-head(ex_dat_mrg_sum)
-
-ggplot(data = dplyr::filter(ex_dat_mrg, Well %in% sample_wells),
-       aes(x = Time, y = deriv_percap5)) +
-  geom_line() +
-  facet_wrap(~Well) +
-  geom_point(data = dplyr::filter(ex_dat_mrg_sum, Well %in% sample_wells), 
-             aes(x = max_percap_time, y = max_percap),
-             size = 2, color = "red") +
-  coord_cartesian(ylim = c(-1, NA))
-
-## -----------------------------------------------------------------------------
-ex_dat_mrg_sum <- 
-  summarize(group_by(ex_dat_mrg, Bacteria_strain, Phage, Well),
             mid_point = first_above(y = Measurements, x = Time, return = "x",
                                     threshold = max_gc(Measurements)/2),
             infl_point = extr_val(Time, which_max_gc(deriv)))
@@ -176,27 +197,6 @@ ggplot(data = dplyr::filter(ex_dat_mrg, Well %in% sample_wells),
              aes(xintercept = mid_point), lty = 2, color = "red") +
   geom_vline(data = dplyr::filter(ex_dat_mrg_sum, Well %in% sample_wells),
              aes(xintercept = infl_point), lty = 2, color = "blue")
-
-## -----------------------------------------------------------------------------
-ex_dat_mrg_sum <- 
-  summarize(group_by(ex_dat_mrg, Bacteria_strain, Phage, Well),
-            max_dens = max_gc(Measurements, na.rm = TRUE),
-            max_time = extr_val(Time, which_max_gc(Measurements)))
-head(ex_dat_mrg_sum)
-
-ggplot(data = dplyr::filter(ex_dat_mrg, Well %in% sample_wells),
-       aes(x = Time, y = Measurements)) +
-  geom_line() +
-  facet_wrap(~Well) +
-  geom_point(data = dplyr::filter(ex_dat_mrg_sum, Well %in% sample_wells), 
-             aes(x = max_time, y = max_dens),
-             size = 2, color = "red")
-
-## -----------------------------------------------------------------------------
-ex_dat_mrg_sum <-
-  summarize(group_by(ex_dat_mrg, Bacteria_strain, Phage, Well),
-            auc = auc(x = Time, y = Measurements))
-head(ex_dat_mrg_sum)
 
 ## -----------------------------------------------------------------------------
 nophage_wells <- c("A1", "A4", "E2", "F1")

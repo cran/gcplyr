@@ -12,6 +12,8 @@
 #' 
 #' @return An R object, or the names of the files if files have been written
 #' 
+#' @importFrom rlang .data
+#' 
 #' @export
 make_example <- function(vignette, example, dir = ".") {
   #Make sure dir ends in /
@@ -156,6 +158,34 @@ make_example <- function(vignette, example, dir = ".") {
                    byrow = TRUE))
       message("Files have been written")
       return(paste0(dir, "mydesign2.csv"))
+    } else if (example == 3) {
+      ## Example 3 ----
+      utils::write.csv(
+        file = paste0(dir, "mydesign_sep.csv"),
+        x = rbind(matrix(rep(c("Tr1", "Tr2"), each = 48),
+                         nrow = 8, ncol = 12, dimnames = list(LETTERS[1:8], 1:12)),
+                  matrix(data = "", nrow = 1, ncol = 12,
+                         dimnames = list("", rep("", 12))),
+                  matrix(data = 1:12, nrow = 1, ncol = 12,
+                         dimnames = list("", rep("", 12))),
+                  matrix(rep(c("StrA", "StrB", "StrC", "StrD"), each = 24),
+                         nrow = 8, ncol = 12, dimnames = list(LETTERS[1:8], 1:12),
+                         byrow = TRUE)))
+      message("Files have been written")
+      return(paste0(dir, "mydesign_sep.csv"))
+    } else if (example == 4) {
+      ## Example 3 ----
+      pt1 <- matrix(rep(c("Tr1", "Tr2"), each = 48),
+                    nrow = 8, ncol = 12, dimnames = list(LETTERS[1:8], 1:12))
+      pt2 <- matrix(rep(c("StrA", "StrB", "StrC", "StrD"), each = 24),
+                    nrow = 8, ncol = 12, dimnames = list(LETTERS[1:8], 1:12),
+                    byrow = TRUE)
+      utils::write.csv(
+        file = paste0(dir, "mydesign_pasted.csv"),
+        x = matrix(paste(pt1, pt2, sep = "_"),
+                   nrow = 8, ncol = 12, dimnames = list(LETTERS[1:8], 1:12)))
+      message("Files have been written")
+      return(paste0(dir, "mydesign_pasted.csv"))
     }
   
   } else if (vignette == 4) {
@@ -192,7 +222,8 @@ make_example <- function(vignette, example, dir = ".") {
       # We'll add some identifiers and then merge them together
       noiseless_data <- dplyr::mutate(noiseless_data, noise = "No")
       noisy_data <- dplyr::mutate(noisy_data, noise = "Yes")
-      ex_dat_mrg <- merge_dfs(noisy_data, noiseless_data)
+      ex_dat_mrg <- merge_dfs(noisy_data, noiseless_data,
+                              warn_morerows = FALSE)
       ex_dat_mrg <- merge_dfs(ex_dat_mrg, gcplyr::example_design_tidy)
       
       ex_dat_mrg$Well <- 
@@ -207,6 +238,17 @@ make_example <- function(vignette, example, dir = ".") {
       ex_dat_mrg <- ex_dat_mrg[ex_dat_mrg$Well %in% sample_wells, ]
       
       return(ex_dat_mrg)
+    } else if (example == 2) {
+      ## Example 2 ----
+      noisy_data <- trans_wide_to_tidy(gcplyr::example_widedata, id_cols = "Time")
+      ex_dat_mrg <- merge_dfs(noisy_data, gcplyr::example_design_tidy)
+      
+      ex_dat_mrg$Well <- 
+        factor(ex_dat_mrg$Well,
+               levels = paste(rep(LETTERS[1:8], each = 12), 1:12, sep = ""))
+      ex_dat_mrg$Time <- ex_dat_mrg$Time/3600 #Convert time to hours
+      
+      return(ex_dat_mrg)
     }
     
   } else if (vignette == 8) {
@@ -214,13 +256,12 @@ make_example <- function(vignette, example, dir = ".") {
     
     if(example == 1) {
       ## Example 1 ----
-      # Define the function that calculates density according to Baranyi-Roberts eq
-      baranyi_gr <- function(r, k, q0, m, init_dens, times) {
-        # Note: these eqs are the integral of the dN/dt eq in the text above
-        # Acclimation function
-        a <- times + 1/m*log((exp(-m*times)+q0)/(1+q0))
+      # Define the function that calculates density with a discrete lag time
+      lag_then_gr <- function(r, k, lag, init_dens, times) {
+        lagged_times <- times - lag
+        lagged_times <- ifelse(lagged_times < 0, 0, lagged_times)
         # Density function
-        return(k/(1-(1-(k/init_dens))*exp(-r*a)))
+        return(k/(1-(1-(k/init_dens))*exp(-r*lagged_times)))
       }
       
       # Set up our wide-shaped data frame
@@ -231,10 +272,9 @@ make_example <- function(vignette, example, dir = ".") {
       
       # Simulate growth
       for (i in 3:ncol(sim_dat)) {
-        sim_dat[, i] <- baranyi_gr(times = sim_dat$time, 
-                                   r = 0.02, k = 1, q0 = 0.01,
-                                   m = stats::runif(1, min = 0.01, max = 0.02),
-                                   #m = rgamma(n = 1, shape = 2, scale = 0.02/2),
+        sim_dat[, i] <- lag_then_gr(times = sim_dat$time, 
+                                   r = 0.02, k = 1, 
+                                   lag = stats::runif(1, min = 0, max = 500),
                                    init_dens = 0.001)
       }
       
@@ -245,6 +285,27 @@ make_example <- function(vignette, example, dir = ".") {
       sim_dat_tdy <- trans_wide_to_tidy(sim_dat, id_cols = "time")
       
       return(sim_dat_tdy)
+    } else if (example == 2) {
+      ## Example 2 ----
+      example_tidydata <- trans_wide_to_tidy(gcplyr::example_widedata_noiseless,
+                                             id_cols = "Time")
+      ex_dat_mrg <- merge_dfs(example_tidydata, gcplyr::example_design_tidy)
+      ex_dat_mrg_sum <-
+        dplyr::summarize(
+          dplyr::group_by(
+            dplyr::filter(ex_dat_mrg, .data$Phage == "No Phage"),
+            .data$Well, .data$Bacteria_strain, .data$Phage),
+          auc = auc(x = .data$Time, y = .data$Measurements))
+      
+      set.seed(123)
+      antibiotic_dat <- 
+        data.frame(Bacteria_strain = paste("Strain", 1:48),
+                   Antibiotic_resis = 
+                     ex_dat_mrg_sum$auc[
+                       match(paste("Strain", 1:48), 
+                             ex_dat_mrg_sum$Bacteria_strain)] * 
+                     stats::runif(48, 0.5, 1.5) < mean(ex_dat_mrg_sum$auc))
+      return(antibiotic_dat)
     }
     
   } else if (vignette == 9) {

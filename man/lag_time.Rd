@@ -13,7 +13,13 @@ lag_time(
   slope = NULL,
   x1 = NULL,
   y1 = NULL,
-  y0 = NULL
+  y0 = NULL,
+  warn_logtransform_warnings = TRUE,
+  warn_logtransform_infinite = TRUE,
+  warn_min_y_mismatch = TRUE,
+  warn_multiple_maxderiv = TRUE,
+  warn_one_lag = TRUE,
+  warn_no_lag = TRUE
 )
 }
 \arguments{
@@ -31,7 +37,9 @@ lag_time(
                 
                 \code{'linear'} is available for alternate uses}
 
-\item{na.rm}{a logical indicating whether missing values should be removed}
+\item{na.rm}{a logical indicating whether missing values or values that
+become \code{NA} or infinite during log-transformation should 
+be removed}
 
 \item{slope}{Slope to project from x1,y1 to y0 (typically per-capita growth
 rate). If not provided, will be calculated as \code{max(deriv)}}
@@ -44,6 +52,29 @@ will be calculated as \code{y[which.max(deriv)]}.}
 
 \item{y0}{y value (typically density) to find intersection of slope from
 x1, y1 with. If not provided, will be calculated as \code{min(y)}}
+
+\item{warn_logtransform_warnings}{logical whether warning should be issued 
+when log(y) produced warnings.}
+
+\item{warn_logtransform_infinite}{logical whether warning should be issued 
+when log(y) produced infinite values that will
+be treated as \code{NA}.}
+
+\item{warn_min_y_mismatch}{logical whether warning should be issued when 
+\code{min(y)} does not equal 
+\code{min(y[!is.na(x)])}.}
+
+\item{warn_multiple_maxderiv}{logical whether warning should be issued when 
+there are multiple points in \code{deriv} that
+are tied for the highest, and only the first
+will be used.}
+
+\item{warn_one_lag}{logical whether warning should be issued when 
+some, but not all, inputs are vectorized, and
+only one lag time value will be returned.}
+
+\item{warn_no_lag}{logical whether warning should be issued when calculated
+lag time is less than the minimum value of x}
 }
 \value{
 Typically a scalar of the lag time in units of x. See Details for
@@ -52,19 +83,16 @@ cases when value will be a vector.
 \description{
 Lag time is calculated by projecting a tangent line at the point
 of maximum (per-capita) derivative backwards to find the time when it
-intersects with the starting y-value
+intersects with the minimum y-value
 }
 \details{
 For most typical uses, simply supply \code{x}, \code{y}, and \code{deriv}
 (using the per-capita derivative and \code{trans_y = 'log'}).
 
 Advanced users may wish to use alternate values for the slope, origination
-point, or initial y-value. In that case, values can be supplied to
+point, or minimum y-value. In that case, values can be supplied to
 \code{slope}, \code{x1}, \code{y1}, and/or \code{y0}, which will override
 the default calculations. If and only if all of \code{slope}, \code{x1}, 
 \code{y1}, and \code{y0} are provided, \code{lag_time} is vectorized on
 their inputs and will return a vector of lag time values.
-
-This function is designed to be compatible for use within
- \code{dplyr::group_by} and \code{dplyr::summarize}
 }

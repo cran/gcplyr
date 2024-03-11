@@ -1172,27 +1172,40 @@ import_blockmeasures <- function(files, num_plates = 1,
 #' Import blockdesigns
 #' 
 #' Function to import block-shaped designs from files and return tidy designs.
-#' This function acts as a wrapper to call \code{read_blocks}, 
+#' This function acts as a wrapper that calls \code{read_blocks}, 
 #' \code{paste_blocks}, \code{trans_block_to_wide}, \code{trans_wide_to_tidy}, 
-#' and \code{separate_tidys} in one go
+#' and \code{separate_tidys}
 #'
-#' @param files Vector of filenames (as strings), each of which is a 
-#'              block-shaped designs file. Inputs can be .csv, .xls, or .xlsx
+#' @param files A vector of filepaths relative to the current working directory
+#'              where each filepath is a single plate read to be read by
+#'              \code{read_blocks}.
 #' @param block_names
-#'              Vector of names for design elements. These will be the
-#'              resulting column names in the output data frame. Should be 
-#'              in the same order as \code{files} and/or same order
-#'              as corresponding \code{files} themselves. If \code{NULL},
-#'              file names will be used as column names.
-#' @param block_name_header The column name for the column containing the
-#'                          \code{block_names}
-#' @param sep   If block design files are already pasted,
-#'              sep specifies the string separating design elements
+#'              Vector of names corresponding to each design element (each
+#'              block). Inferred from filenames, if not specified.
 #'              
-#'              If NULL, \code{import_blockdesigns} will assume no elements
-#'              are already pasted together and attempt to find a character
-#'              not used in the imported files to paste and later separate
-#'              design elements.
+#'              When \code{keep_blocknames = TRUE}, a column with the column
+#'              name specified by \code{block_name_header} will contain these
+#'              names.
+#'              
+#'              When \code{join_designs = TRUE}, the \code{block_names} are
+#'              also used as the output column names for each separated
+#'              design column.
+#' @param block_name_header 
+#'              When \code{keep_blocknames = TRUE}, the column name of the
+#'              column containing the \code{block_names}.
+#' @param join_designs logical indicating whether blocks (if there are multiple)
+#'              should be treated as describing the same plate (and so joined
+#'              as columns in the tidy output). If \code{FALSE}, will be 
+#'              treated as describing different plates (and so joined as
+#'              rows in the tidy output).
+#' @param sep   If designs have been pasted together, this specifies the
+#'              string they should be split apart by via \code{separate_tidy}.
+#' @param values_colname When \code{join_designs = FALSE}, the column name
+#'              of the column that will contain all the design values.
+#' @param keep_blocknames logical indicating whether the column containing
+#'              \code{block_names} (or those inferred from file names) should
+#'              be retained in the output. By default, blocknames are retained
+#'              only if \code{join_designs = FALSE}.             
 #' @param ...   Other arguments to pass to \code{read_blocks}, 
 #'              \code{paste_blocks}, \code{trans_block_to_wide},
 #'              \code{trans_wide_to_tidy}, or \code{separate_tidy}.
@@ -1204,16 +1217,16 @@ import_blockmeasures <- function(files, num_plates = 1,
 #' 
 #'              \code{startrow}, \code{endrow}, \code{startcol}, \code{endcol}, 
 #'              \code{sheet} - specifying the location of design information 
-#'              inside \code{files} to \code{read_blocks}
+#'              inside \code{files} to \code{read_blocks}.
 #'              
-#'              \code{wellnames_sep} - specifying what character (or "" for none)
-#'              should be used when pasting together the rownames and
+#'              \code{wellnames_sep} - specifying what character (or "" for 
+#'              none) should be used when pasting together the rownames and
 #'              column names. Note that this should be chosen to match
 #'              the well names in your measures.
 #'              
 #'              Note that \code{import_blockdesigns} cannot currently handle
 #'              metadata specified via the \code{metadata} argument of
-#'              \code{read_blocks}
+#'              \code{read_blocks}.
 #'              
 #'              If you find yourself needing more control, you can run the 
 #'              steps manually, first reading with \code{read_blocks},
@@ -1223,40 +1236,34 @@ import_blockmeasures <- function(files, num_plates = 1,
 #'              \code{separate_tidys}.
 #'              
 #' @return A tidy-shaped \code{data.frame} containing the design information
-#'         from \code{files}
+#'         from \code{files}. This always includes a "Well" column. 
+#'         
+#'         If \code{keep_blocknames = TRUE}, this includes a column with the
+#'         column name specified by \code{block_name_header} and containing
+#'         \code{block_names} (or those inferred from file names).
+#'         
+#'         If \code{join_designs = TRUE}, each block has been joined as a
+#'         column, with the columns named according to \code{block_names} 
+#'         (or inferred from file names) and containing the contents of 
+#'         each corresponding block. If \code{join_designs = FALSE}, each
+#'         block has been joined as rows, with a single column with the
+#'         name specified by \code{values_colnames} containing the
+#'         contents of all the blocks.
 #' 
 #' @export
-import_blockdesigns <- function(files, block_names = NULL, 
-                                block_name_header = "block_name", 
-                                sep = NULL, ...) {
+import_blockdesigns <- 
+  function(files, block_names = NULL, block_name_header = "block_name", 
+           join_designs = TRUE, sep = NULL, values_colname = "Designs", 
+           keep_blocknames = !join_designs, ...) {
+    if(!is.null(sep) && join_designs == FALSE) {
+      warning("join_designs = FALSE, ignoring sep")}
+    
   blocks <- parse_dots(read_blocks, 
                         block_names = block_names, files = files, 
                         block_name_header = block_name_header, ...)
   
-  if(length(files) > 1) {
-    if(is.null(sep)) {
-      #No sep provided, so look for a character that is not present
-      # in the data/metadata and so can be used as a separator
-      sep <- c("_", " ", "-", ",", ";")
-      
-      not_in_blocks <-
-        sapply(
-          X = sep,
-          FUN = function(y) {
-            !any(grepl(pattern = y, fixed = TRUE,
-                       x = unlist(
-                         lapply(X = blocks,
-                                FUN = function(x) {
-                                  c(unlist(x[1]), unlist(x[2]))
-                                }))))
-          })
-      
-      if(!any(not_in_blocks)) {
-        stop("all of '_', ' ', '-', ',', and ';' are found in the files,
-              specify a sep not found in the files")
-      } else {sep <- sep[which(not_in_blocks)[1]]}
-    }
-
+  if(join_designs && length(blocks) > 1) {
+    if(is.null(sep)) {sep <- find_char_for_sep(blocks, nested_metadata = TRUE)[1]}
     blocks_pasted <- parse_dots(paste_blocks, blocks = blocks,
                                  sep = sep, nested_metadata = TRUE, ...)
   } else {blocks_pasted <- blocks}
@@ -1264,20 +1271,25 @@ import_blockdesigns <- function(files, block_names = NULL,
   wides <- parse_dots(trans_block_to_wide, blocks = blocks_pasted,
                        nested_metadata = TRUE, ...)
   
-  #Transform to tidy, dropping the block_name column and using it
-  # as the column name for the values column
-  vals_colname <- wides[1, block_name_header]
-    
-  tidys <- parse_dots(
-    trans_wide_to_tidy, 
-    wides = wides[, -which(block_name_header == colnames(wides))], 
-    data_cols = colnames(wides)[colnames(wides) != block_name_header], 
-    values_to = vals_colname, values_to_numeric = FALSE,
-    ...)
+  #If needed, save block_name_column value to use as col name
+  if(join_designs) {values_colname <- wides[1, block_name_header]}
   
-  if(length(files) > 1) {
-    tidy_sep <- parse_dots(separate_tidy, 
-                            data = tidys, sep = sep, col = vals_colname)
+  #If needed, drop the block name col
+  if(!keep_blocknames) {
+    wides <- wides[, -which(block_name_header == colnames(wides))]}
+  
+  #Transform to tidy
+  tidys <- parse_dots(
+      trans_wide_to_tidy, 
+      wides = wides, 
+      data_cols = colnames(wides)[colnames(wides) != block_name_header], 
+      values_to = values_colname, values_to_numeric = FALSE,
+      ...)
+  
+  if(join_designs && !is.null(sep)) {
+    tidy_sep <- 
+      parse_dots(separate_tidy, data = tidys, sep = sep, 
+                 col = values_colname, ...)
   } else {tidy_sep <- tidys}
     
   return(tidy_sep)
@@ -1521,7 +1533,7 @@ do you need to set `lookup_tbl_start` differently?")
   
   if(output_format %in% c("blocks_pasted", "wide", "tidy")) {
     if(length(dot_args) > 1) {
-      sep <- sep_finder(output, nested_metadata = TRUE)[1]
+      sep <- find_char_for_sep(output, nested_metadata = TRUE)[1]
       output <- paste_blocks(output, nested_metadata = TRUE, sep = sep)
     }
     if(output_format %in% c("wide", "tidy")) {
@@ -2327,6 +2339,8 @@ trans_tidy_to_wide <- function() {
 #'                 See \link[dplyr]{full_join}, \link[dplyr]{left_join}, 
 #'                 \link[dplyr]{right_join}, or \link[dplyr]{inner_join} for 
 #'                 more details
+#' @param warn_morerows logical, should a warning be passed when the output
+#'                      has more rows than x and more rows than y?
 #' @param ... Other arguments to pass to the underlying join function. See 
 #'            \link[dplyr]{full_join}, \link[dplyr]{left_join}, 
 #'            \link[dplyr]{right_join}, or \link[dplyr]{inner_join} for options.
@@ -2337,7 +2351,7 @@ trans_tidy_to_wide <- function() {
 #' @export
 merge_dfs <- function(x, y = NULL, by = NULL, drop = FALSE,
                       collapse = FALSE, names_to = NA,
-                      join = "full", ...) {
+                      join = "full", warn_morerows = TRUE, ...) {
   if(!collapse & (inherits(x, "list") | inherits(y, "list"))) {
     stop("if x or y are a list, collapse must be TRUE")}
   if(!join %in% c("full", "right", "left", "inner")) {
@@ -2381,7 +2395,7 @@ merge_dfs <- function(x, y = NULL, by = NULL, drop = FALSE,
     #Join x and y
     if(join == "full") {
       output <- dplyr::full_join(x = x, y = y, by = by, ...)
-      if(nrow(output) > nrow(x) & nrow(output) > nrow(y)) {
+      if(warn_morerows && nrow(output) > nrow(x) && nrow(output) > nrow(y)) {
         warning("\nmerged_df has more rows than x and than y, this may indicate
                mis-matched values in the shared column(s) used to merge 
               (e.g. 'Well')\n")
@@ -2580,14 +2594,19 @@ separate_tidy <- function(data, col, into = NULL, sep = "_",
 #'                  and "smooth.spline".
 #' @param subset_by An optional vector as long as \code{y}. 
 #'                  \code{y} will be split by the unique values of this vector 
-#'                  and the derivative for each group will be calculated 
+#'                  and the smoothed data for each group will be calculated 
 #'                  independently of the others.
 #'                  
 #'                  This provides an internally-implemented approach similar
 #'                  to \code{dplyr::group_by} and \code{dplyr::mutate}
-#' @param return_fitobject logical indicating whether entire object returned
+#' @param return_fitobject logical whether entire object returned
 #'                         by fitting function should be returned. If FALSE,
 #'                         just fitted values are returned.
+#' @param warn_ungrouped logical whether warning should be issued when
+#'                       \code{smooth_data} is being called on ungrouped data
+#'                       and \code{subset_by = NULL}.
+#' @param warn_gam_no_s logical whether warning should be issued when gam is 
+#'                      used without \code{s()} in the formula.
 #'
 #' @details 
 #'            For \code{moving_average} and \code{moving_median}, 
@@ -2643,13 +2662,15 @@ separate_tidy <- function(data, col, into = NULL, sep = "_",
 #' 
 #' @export
 smooth_data <- function(..., x = NULL, y = NULL, sm_method, subset_by = NULL,
-                        return_fitobject = FALSE) {
+                        return_fitobject = FALSE, warn_ungrouped = TRUE,
+                        warn_gam_no_s = TRUE) {
   if(!sm_method %in% c("moving-average", "moving-median", "gam", 
                        "loess", "smooth.spline")) {
     stop("sm_method must be one of: moving-average, moving-median, gam, loess, or smooth.spline")
   }
   
-  check_grouped(name_for_error = "smooth_data", subset_by = subset_by)
+  if(warn_ungrouped) {
+    check_grouped(name_for_error = "smooth_data", subset_by = subset_by)}
   
   #Parse x and y, and/or ... args, into formula and data
   if(!is.null(y)) {
@@ -2685,7 +2706,7 @@ smooth_data <- function(..., x = NULL, y = NULL, sm_method, subset_by = NULL,
   if (sm_method == "gam") {
     if(!requireNamespace("mgcv", quietly = TRUE)) {
       stop("Package \"mgcv\" must be installed to use gam", call. = FALSE)}
-    if(substr(as.character(formula[3]), 1, 2) != "s(") {
+    if(warn_gam_no_s && substr(as.character(formula[3]), 1, 2) != "s(") {
       warning("gam method is called without 's()' to smooth\n")}
   }
   if(is.null(subset_by)) {subset_by <- rep("A", nrow(data))
@@ -2757,58 +2778,78 @@ smooth_data <- function(..., x = NULL, y = NULL, sm_method, subset_by = NULL,
   if (return_fitobject == TRUE) {return(fits_list)} else {return(out)}
 }
 
-
-  
-#' Moving average smoothing
-#' 
-#' This function uses a moving average to smooth data
+#' Do all setup steps for moving window smoothing function
 #' 
 #' @param formula Formula specifying the numeric response (density) 
 #'                and numeric predictor (time).
 #' @param data Dataframe containing variables in \code{formula}
-#' @param window_width_n Number of data points wide the moving average window is
+#' @param x A vector of predictor values to smooth along (e.g. time)
+#' @param y A vector of response values to be smoothed (e.g. density).
+#' @param window_width_n Number of data points wide the moving window is
 #'                     (therefore, must be an odd number of points)
-#' @param window_width Width of the moving average window (in units of \code{x})
+#' @param window_width Width of the moving window (in units of \code{x})
+#' @param window_width_n_frac Width of the window (as a fraction of the total
+#'                          number of data points).
+#' @param window_width_frac Width of the window (as a fraction of the range of
+#'                          \code{x})
 #' @param na.rm logical whether NA's should be removed before analyzing
+#' @param warn_nonnumeric_sort logical whether warning should be issued when 
+#'                             predictor variable that data is sorted by is 
+#'                             non-numeric.
+#'                             
+#' @return List containing: x values, y values,
+#'                          indices for original order, 
+#'                          indices where NA's were removed,
+#'                          window_width_n, 
+#'                          window_width, 
+#'                          window_width_n_frac,
+#'                          window_width_frac,
 #' 
-#' @return Vector of smoothed data, with NA's appended at both ends
-#' 
-#' @export   
-moving_average <- function(formula, data, window_width_n = NULL, 
-                           window_width = NULL, na.rm = TRUE) {
-  if(is.null(window_width) & is.null(window_width_n)) {
-    stop("window_width or window_width_n must be provided")}
+#' @noRd
+setup_moving_smooth <- function(formula, data, x, y,
+                             window_width_n, 
+                             window_width, 
+                             window_width_n_frac,
+                             window_width_frac,
+                             na.rm, warn_nonnumeric_sort) {
+
+  window_width_n <- NA_to_NULL(window_width_n)
+  window_width <- NA_to_NULL(window_width)
+  window_width_n_frac <- NA_to_NULL(window_width_n_frac)
+  window_width_frac <- NA_to_NULL(window_width_frac)
   
-  #Check window width
-  if(!is.null(window_width_n) && window_width_n %% 2 == 0) {
-      stop("window_width_n must be an odd number")}
+  if(is.null(window_width) && is.null(window_width_n) && 
+     is.null(window_width_frac) && is.null(window_width_n_frac)) {
+    stop("window_width, window_width_n, window_width_frac, or window_width_n_frac\nmust be provided")}
   
-  #Check formula formatting
-  if (length(formula) < 3) {stop("No response variable specified")}
-  if (length(formula[[3]]) > 1) {stop("Multiple predictors in formula")}
+  if((is.null(formula) || is.null(data)) && (is.null(x) || is.null(y))) {
+    stop("formula and data, or x and y, must be provided")}
   
-  #Parse formula
-  response_var <- as.character(formula[[2]])
-  predictor_var <- as.character(formula[[3]])
-  
-  #Check for vars in data
-  stopifnot(response_var %in% colnames(data),
-            predictor_var %in% colnames(data))
-  
-  #Check x for being correct format
-  if(!is.numeric(data[, predictor_var])) {
-    if (!canbe.numeric(data[, predictor_var])) {
-      warning(paste0("data is being sorted by order(", predictor_var,
-                    "), but ", predictor_var, " is not numeric\n"))
-    } else {x <- as.numeric(data[, predictor_var])} #it can be coerced
+  if(!is.null(formula) && !is.null(data)) {
+    temp_parsed_formula_data <- parse_formula_data(formula, data)
+    x <- temp_parsed_formula_data[["x"]]
+    y <- temp_parsed_formula_data[["y"]]
   }
   
+  #Check x for being correct format
+  if(!is.numeric(x)) {
+    if(canbe.numeric(x)) {x <- as.numeric(x) #it can be coerced
+    } else if(warn_nonnumeric_sort) {
+      if(!is.null(formula) && !is.null(data)) {
+        warning(paste0("data is being sorted by order(", 
+                       temp_parsed_formula_data[["predictor"]], "), but ", 
+                       temp_parsed_formula_data[["predictor"]], 
+                       " is not numeric\n"))
+      } else {
+        warning("data is being sorted by order(x), but x is not numeric")
+      }
+    }
+  }
   #Check y for being the correct format
-  data[, response_var] <- make.numeric(data[, response_var], response_var)
+  y <- make.numeric(y, "y")
   
   #remove nas
-  narm_temp <- rm_nas(x = data[, predictor_var], y = data[, response_var], 
-                      na.rm = na.rm, stopifNA = TRUE)
+  narm_temp <- rm_nas(x = x, y = y, na.rm = na.rm, stopifNA = TRUE)
   
   #Reorder data
   order_temp <- reorder_xy(x = narm_temp[["x"]], y = narm_temp[["y"]])
@@ -2817,91 +2858,209 @@ moving_average <- function(formula, data, window_width_n = NULL,
   x <- order_temp[["x"]]
   y <- order_temp[["y"]]
   
+  if(!is.null(window_width_n) && length(x) != length(unique(x))) {
+    warning("not all x values are unique, window_width_n should not be used")}
+  if(!is.null(window_width_n_frac) && length(x) != length(unique(x))) {
+    warning("not all x values are unique, window_width_n_frac should not be used")}
+  
+  return(list(x = x, y = y,
+              order = order_temp[["order"]],
+              nas_indices_removed = narm_temp[["nas_indices_removed"]],
+              window_width_n = window_width_n, 
+              window_width = window_width, 
+              window_width_n_frac = window_width_n_frac,
+              window_width_frac = window_width_frac))
+}
+
+#' Moving window smoothing
+#' 
+#' These functions use a moving window to smooth data
+#' 
+#' @param formula Formula specifying the numeric response (density) 
+#'                and numeric predictor (time).
+#' @param data Dataframe containing variables in \code{formula}
+#' @param x A vector of predictor values to smooth along (e.g. time)
+#' @param y A vector of response values to be smoothed (e.g. density).
+#' @param window_width_n Number of data points wide the moving window is
+#'                     (therefore, must be an odd number of points)
+#' @param window_width Width of the moving window (in units of \code{x})
+#' @param window_width_n_frac Width of the window (as a fraction of the total
+#'                          number of data points).
+#' @param window_width_frac Width of the window (as a fraction of the range of
+#'                          \code{x})
+#' @param na.rm logical whether NA's should be removed before analyzing
+#' @param warn_nonnumeric_sort logical whether warning should be issued when 
+#'                             predictor variable that data is sorted by is 
+#'                             non-numeric.
+#' 
+#' @details Either \code{x} and \code{y} or \code{formula} and \code{data}
+#'          must be provided.
+#'          
+#'          Values of \code{NULL} or \code{NA} will be ignored for any of
+#'          \code{window_width_n}, \code{window_width},
+#'          \code{window_width_n_frac}, or \code{window_width_frac}
+#'          
+#' @return Vector of smoothed data, with NA's appended at both ends
+#' 
+#' @name MovingWindowFunctions
+NULL
+
+#' @rdname MovingWindowFunctions
+#' @export
+moving_average <- function(formula = NULL, data = NULL, x = NULL, y = NULL,
+                           window_width_n = NULL, 
+                           window_width = NULL, 
+                           window_width_n_frac = NULL,
+                           window_width_frac = NULL,
+                           na.rm = TRUE, warn_nonnumeric_sort = TRUE) {
+  #Run all setup steps and checks
+  setup <- setup_moving_smooth(formula = formula, data = data, x = x, y = y,
+                            window_width_n = window_width_n,
+                            window_width = window_width,
+                            window_width_n_frac = window_width_n_frac,
+                            window_width_frac = window_width_frac,
+                            na.rm = na.rm, 
+                            warn_nonnumeric_sort = warn_nonnumeric_sort)
+  
   #Get windows
-  windows <- get_windows(x = x, y = y, window_width_n = window_width_n,
-                         window_width = window_width, edge_NA = TRUE)
+  windows <- get_windows(x = setup[["x"]], y = setup[["y"]], 
+                         window_width_n = setup[["window_width_n"]],
+                         window_width = setup[["window_width"]],
+                         window_width_n_frac = setup[["window_width_n_frac"]], 
+                         window_width_frac = setup[["window_width_frac"]],
+                         edge_NA = TRUE)
+  
   #Calculate average
-  results <- sapply(windows, y = y, FUN = function(x, y) {mean(y[x])})
+  results <- sapply(windows, y = setup[["y"]], 
+                    FUN = function(x, y) {mean(y[x])})
   #Put back in original order
-  results <- results[order(order_temp[["order"]])]
+  results <- results[order(setup[["order"]])]
   #Add NA's
   results <- add_nas(x = results, 
-                     nas_indices_removed = narm_temp[["nas_indices_removed"]])[["x"]]
+                     nas_indices_removed = setup[["nas_indices_removed"]])[["x"]]
   
   return(results)
 }
 
-#' Moving median smoothing
-#' 
-#' This function uses a moving median to smooth data
-#' 
-#' @param formula Formula specifying the numeric response (density) 
-#'                and numeric predictor (time).
-#' @param data Dataframe containing variables in \code{formula}
-#' @param window_width_n Number of data points wide the moving median window is
-#'                     (therefore, must be an odd number of points)
-#' @param window_width Width of the moving median window (in units of \code{x})|
-#' @param na.rm logical whether NA's should be removed before analyzing
-#' 
-#' @return Vector of smoothed data, with NA's appended at both ends
-#' 
-#' @export   
-moving_median <- function(formula, data, window_width_n = NULL, 
-                          window_width = NULL, na.rm = TRUE) {
-  if(is.null(window_width) & is.null(window_width_n)) {
-    stop("window_width or window_width_n must be provided")}
+#' @rdname MovingWindowFunctions
+#' @export 
+moving_median <- function(formula = NULL, data = NULL, x = NULL, y = NULL,
+                          window_width_n = NULL, 
+                          window_width = NULL, 
+                          window_width_n_frac = NULL,
+                          window_width_frac = NULL,
+                          na.rm = TRUE, warn_nonnumeric_sort = TRUE) {
   
-  #Check window width
-  if(!is.null(window_width_n) && window_width_n %% 2 == 0) {
-    stop("window_width_n must be an odd number")}
-  
-  #Check formula formatting
-  if (length(formula) < 3) {stop("No response variable specified")}
-  if (length(formula[[3]]) > 1) {stop("Multiple predictors in formula")}
-  
-  #Parse formula
-  response_var <- as.character(formula[[2]])
-  predictor_var <- as.character(formula[[3]])
-  
-  #Check for vars in data
-  stopifnot(response_var %in% colnames(data),
-            predictor_var %in% colnames(data))
-  
-  #Check x for being correct format
-  if(!is.numeric(data[, predictor_var])) {
-    if (!canbe.numeric(data[, predictor_var])) {
-      warning(paste0("data is being sorted by order(", predictor_var,
-                    "), but ", predictor_var, " is not numeric\n"))
-    } else {x <- as.numeric(data[, predictor_var])} #it can be coerced
-  }
-  
-  #Check y for being the correct format
-  data[, response_var] <- make.numeric(data[, response_var], response_var)
-  
-  #remove nas
-  narm_temp <- rm_nas(x = data[, predictor_var], y = data[, response_var], 
-                      na.rm = na.rm, stopifNA = TRUE)  
-  #Reorder data
-  order_temp <- reorder_xy(x = narm_temp[["x"]], y = narm_temp[["y"]])
-  
-  #Make temp vectors of x and y
-  x <- order_temp[["x"]]
-  y <- order_temp[["y"]]
+  #Run all setup steps and checks
+  setup <- setup_moving_smooth(formula = formula, data = data, x = x, y = y,
+                            window_width_n = window_width_n,
+                            window_width = window_width,
+                            window_width_n_frac = window_width_n_frac,
+                            window_width_frac = window_width_frac,
+                            na.rm = na.rm, 
+                            warn_nonnumeric_sort = warn_nonnumeric_sort)
   
   #Get windows
-  windows <- get_windows(x = x, y = y, window_width_n = window_width_n,
-                         window_width = window_width, edge_NA = TRUE)
+  windows <- get_windows(x = setup[["x"]], y = setup[["y"]], 
+                         window_width_n = setup[["window_width_n"]],
+                         window_width = setup[["window_width"]],
+                         window_width_n_frac = setup[["window_width_n_frac"]], 
+                         window_width_frac = setup[["window_width_frac"]],
+                         edge_NA = TRUE)
+  
   #Calculate median
-  results <- sapply(windows, y = y, FUN = function(x, y) {stats::median(y[x])})
+  results <- sapply(windows, y = setup[["y"]], 
+                    FUN = function(x, y) {stats::median(y[x])})
   #Put back in original order
-  results <- results[order(order_temp[["order"]])]
+  results <- results[order(setup[["order"]])]
   #Add NA's
   results <- 
     add_nas(x = results, 
-            nas_indices_removed = narm_temp[["nas_indices_removed"]])[["x"]]
+            nas_indices_removed = setup[["nas_indices_removed"]])[["x"]]
   
   return(results)
 }
+
+#' Predict data by linear interpolation from existing data
+#' 
+#' @param x A vector of known predictor values.
+#' @param y A vector of known response values.
+#' @param newdata A vector of new predictor values for which the response
+#'                value will be predicted
+#' @param extrapolate_predictions 
+#'                Boolean indicating whether values of \code{newdata} that are 
+#'                out of the domain of \code{x} should be predicted (by 
+#'                extrapolating the slope from the endpoints of \code{x}). If
+#'                \code{FALSE}, such values will be returned as \code{NA}.
+#' @param na.rm logical whether NA's should be removed before making predictions
+#'
+#' @return A vector of response values for each predictor value in 
+#'         \code{newdata}
+#'         
+#' @export
+predict_interpolation <- function(
+    x, y, newdata, extrapolate_predictions = TRUE, na.rm = TRUE) {
+  x <- make.numeric(x, "x")
+  y <- make.numeric(y, "y")
+  newdata <- make.numeric(newdata, "newdata")
+  
+  nas_removed <- rm_nas(x = x, y = y, na.rm = na.rm)
+  
+  if(length(nas_removed[["x"]]) == 0) {return(rep(NA), length(newdata))}
+  
+  dat <- data.frame(x = nas_removed[["x"]], y = nas_removed[["y"]])
+  
+  #If any newdata are out of known domain, project endpoint slopes
+  # out to needed newdata points
+  if(any(!is.na(newdata) & newdata < min(dat$x))) {
+    if(!extrapolate_predictions) {newdata[newdata < min(x)] <- NA
+    } else {dat <- 
+      rbind(data.frame(x = min(newdata),
+                       y = solve_linear(x1 = dat$x[1], x2 = dat$x[2],
+                                        y1 = dat$y[1], y2 = dat$y[2],
+                                        x3 = min(newdata))),
+            dat)
+    }
+  }
+  if(any(!is.na(newdata) & newdata > max(dat$x))) {
+    if(!extrapolate_predictions) {newdata[newdata > max(x)] <- NA
+    } else {dat <- 
+      rbind(dat,
+            data.frame(x = max(newdata),
+                       y = solve_linear(x1 = dat$x[nrow(dat)], 
+                                        x2 = dat$x[nrow(dat)-1],
+                                        y1 = dat$y[nrow(dat)], 
+                                        y2 = dat$y[nrow(dat)-1],
+                                        x3 = max(newdata))))
+    }
+  }
+  
+  nas_removed <- rm_nas(newdata = newdata, na.rm = TRUE)
+  
+  if(length(nas_removed[["newdata"]]) == 0) {
+    return(rep(as.numeric(NA), length(newdata)))
+  } else {
+    newdata <- nas_removed[["newdata"]]
+  
+    out <- solve_linear(
+      x1 = sapply(newdata, 
+                  function(newdata, x) {x[max(which(x <= newdata))]}, x = dat$x),
+      x2 = sapply(newdata, 
+                  function(newdata, x) {x[min(which(x >= newdata))]}, x = dat$x),
+      y1 = sapply(newdata, function(newdata, x, y) {y[max(which(x <= newdata))]}, 
+                  x = dat$x, y = dat$y),
+      y2 = sapply(newdata, function(newdata, x, y) {y[min(which(x >= newdata))]},
+                  x = dat$x, y = dat$y),
+      x3 = newdata,
+      named = FALSE)
+    out <- 
+      add_nas(out,
+              nas_indices_removed = nas_removed[["nas_indices_removed"]])[["x"]]
+    
+    return(out)
+  }
+}
+
 
 #' Fit a Smoothing Spline
 #' 
@@ -2962,6 +3121,252 @@ gc_smooth.spline <- function(x, y = NULL, ..., na.rm = TRUE) {
   return(ans)
 }
 
+# Processing: Cross-validation ----
+
+#' Create method argument for \code{caret::train} of growth curve smoothers
+#' 
+#' This function generates a list which is compatible to be used as the
+#' \code{method} argument to \code{caret::train}. This enables users to
+#' call \code{caret::train} directly themselves with \code{smooth_data}
+#' smoothing functions.
+#' 
+#' @param sm_method Argument specifying which smoothing method should
+#'                  be used. Options include "moving-average", "moving-median", 
+#'                  "loess", "gam", and "smooth.spline".
+#' @param tuneGrid A data frame with possible tuning value. The columns should 
+#'                 be named the same as the tuning parameters.
+#'                 
+#'                 Note that, when using \code{caret::train}, the tuneGrid
+#'                 must be passed both to this function as well as directly
+#'                 to \code{caret::train}.
+#' 
+#' @return A list that can be used as the method argument to
+#'         \code{caret::train}. Contains elements:
+#'         \code{library}, \code{type}, \code{prob}, \code{fit},
+#'         \code{parameters}, \code{grid}, \code{fit}, and \code{predict}.
+#'         
+#'         See documentation on using a custom model model in 
+#'         \code{caret::train} for more details.
+#'
+#' @export
+makemethod_train_smooth_data <- function(sm_method, tuneGrid = NULL) {
+  #Create baseline list
+  gcmethod_out <- 
+    list(library = "gcplyr", type = "Regression", prob = NULL)
+  
+  #Set up fitting function element
+  gcmethod_out$fit <- function(x, y, wts, param, lev = NULL, last,
+                           weights, classProbs, ...) {
+    sm_args <- c(as.list(param), list(...),
+                 sm_method = sm_method, warn_ungrouped = FALSE)
+    sm_args[["x"]] <- x$x
+    sm_args[["y"]] <- y
+    sm_args[["return_fitobject"]] <- TRUE
+    return(list(x = x, y = y, modelout = do.call(gcplyr::smooth_data, sm_args)[[1]]))
+  }
+  
+  #Set up parameters and grid elements
+  if(!is.null(tuneGrid)) {
+    stopifnot(is.data.frame(tuneGrid))
+    gcmethod_out$parameters <- data.frame(parameter = colnames(tuneGrid),
+                                      class = "numeric", 
+                                      label = colnames(tuneGrid))
+    gcmethod_out$grid <- function(x, y, len, search) {
+      stop("tuneGrid was specified, this grid function should not be called")}
+  } else {
+    
+    #Define the default parameters & grid when tuneGrid is not specified
+    if(sm_method %in% c("moving-average", "moving-median")) {
+      gcmethod_out$parameters <- 
+        data.frame(parameter = "window_width_n",
+                   class = "numeric", label = "window_width_n")
+      gcmethod_out$grid <-
+        function(x, y, len, search) {
+          if(search == "grid") {
+            myseq <- round(seq(from = 1, to = 13, length.out = len))
+            return(data.frame(window_width_n = myseq - (1 - myseq %% 2)))
+          } else {
+            return(data.frame(
+              window_width_n = 
+                base::sample(x = seq(from = 1, to = 13, by = 2), size = len)))
+          }
+        }
+    } else if(sm_method == "loess") {
+      gcmethod_out$parameters <- 
+        data.frame(parameter = "span", class = "numeric", label = "span")
+      gcmethod_out$grid <-
+        function(x, y, len, search) {
+          if(search == "grid") {
+            return(data.frame(
+              span = seq(from = 0.01, to = 0.2, length.out = len)))
+          } else {
+            return(data.frame(
+              span = stats::runif(min = 0.01, max = 0.2, n = len)))
+          }
+        }
+    } else if(sm_method == "gam") {
+      gcmethod_out$parameters <-
+        data.frame(parameter = "k", class = "numeric", label = "k")
+      gcmethod_out$grid <-
+        function(x, y, len, search) {
+          if(search == "grid") {
+            return(data.frame(
+              k = round(seq(from = 10, to = 0.75*nrow(x), length.out = len))))
+          } else {
+            return(data.frame(
+              k = round(stats::runif(min = 10, max = 0.75*nrow(x), n = len))))
+          }
+        }
+    } else if(sm_method == "smooth.spline") {
+      gcmethod_out$parameters <- 
+        data.frame(parameter = "spar", class = "numeric", label = "spar")
+      gcmethod_out$grid <-
+        function(x, y, len, search) {
+          if(search == "grid") {
+            return(data.frame(spar = seq(from = 0, to = 0.5, length.out = len)))
+          } else {
+            return(data.frame(spar = stats::runif(min = 0, max = 0.5, n = len)))
+          }
+        }
+    }
+  }
+  
+  #Define predict function for each method
+  if(sm_method %in% c("moving-average", "moving-median")) {
+    gcmethod_out$predict <- 
+      function(modelFit, newdata, preProc = NULL, submodels = NULL) {
+        return(predict_interpolation(x = modelFit[["x"]]$x, 
+                                      y = modelFit[["modelout"]][["fitted"]], 
+                                      newdata = newdata$x))}
+  } else if(sm_method %in% c("loess", "gam")) {
+    gcmethod_out$predict <-
+      function(modelFit, newdata, preProc = NULL, submodels = NULL) {
+        return(stats::predict(object = modelFit[["modelout"]], newdata = newdata))
+      }
+  } else if(sm_method == "smooth.spline") {
+    gcmethod_out$predict <-
+      function(modelFit, newdata, preProc = NULL, submodels = NULL) {
+        return(stats::predict(object = modelFit[["modelout"]], x = newdata$x)$y)
+      }
+  }
+  
+  return(gcmethod_out)
+}
+
+
+#' Test efficacy of different smoothing parameters
+#' 
+#' This function is based on \code{caret::train}, which runs models
+#' (in our case different smoothing algorithms) on data across different 
+#' parameter values (in our case different smoothness parameters).
+#' 
+#' @param ... Arguments passed to \code{smooth_data}. These arguments cannot
+#'            overlap with any of those to be tuned.
+#' @param x A vector of predictor values to smooth along (e.g. time)
+#' @param y A vector of response values to be smoothed (e.g. density).
+#' @param sm_method Argument specifying which smoothing method should
+#'                  be used. Options include "moving-average", "moving-median", 
+#'                  "loess", "gam", and "smooth.spline".
+#' @param preProcess A string vector that defines a pre-processing of the
+#'                   predictor data. The default is no pre-processing.
+#'                   See \code{caret::train} for more details.
+#' @param weights    A numeric vector of case weights. This argument currently
+#'                   does not affect any \code{train_smooth_data} models.
+#' @param metric     A string that specifies what summary metric will be
+#'                   used to select the optimal model. By default, possible
+#'                   values are "RMSE" and "Rsquared" for regression.
+#'                   See \code{caret::train} for more details.
+#' @param maximize   A logical: should the metric be maximized or minimized?
+#' @param trControl  A list of values that define how this function acts.
+#'                   See \code{caret::train} and \code{caret::trainControl}
+#'                   for more details.
+#' @param tuneGrid A data frame with possible tuning values, or a named list
+#'                 containing vectors with possible tuning values. If a data 
+#'                 frame, the columns should be named the same as the tuning 
+#'                 parameters. If a list, the elements of the list should be
+#'                 named the same as the tuning parameters. If a list,
+#'                 \code{expand.grid} will be used to make all possible
+#'                 combinations of tuning parameter values.
+#' @param tuneLength An integer denoting the amount of granularity in
+#'                   the tuning parameter grid. By default, this argument
+#'                   is the number of levels for each tuning parameter that
+#'                   should be generated. If \code{trControl} has the option
+#'                   \code{search = "random"}, this is the maximum number
+#'                   of tuning parameter combinations that will be generated
+#'                   by the random search. (NOTE: If given, this argument
+#'                   must be named.)
+#' @param return_trainobject A logical indicating whether the entire result
+#'                           of \code{caret::train} should be returned, or
+#'                           only the \code{results} element.
+#'                           
+#' @details See \code{caret::train} for more information.
+#' 
+#'          The default method is k-fold cross-validation 
+#'          (\code{trControl = caret::trainControl(method = "cv")}). 
+#'          
+#'          For less variable, but more computationally costly, cross-validation,
+#'          users may choose to increase the number of folds. This can be
+#'          done by altering the \code{number} argument in 
+#'          \code{caret::trainControl}, or by setting \code{method = "LOOCV"} 
+#'          for leave one out cross-validation where the number of folds is 
+#'          equal to the number of data points. 
+#'          
+#'          For less variable, but more computationally costly, cross-validation,
+#'          users may alternatively choose \code{method = "repeatedcv"} for 
+#'          repeated k-fold cross-validation.
+#' 
+#'          For more control, advanced users may wish to call 
+#'          \code{caret::train} directly, using \code{makemethod_train_smooth_data} to 
+#'          specify the \code{method} argument.
+#' 
+#' @return If \code{return_trainobject = FALSE} (the default), a data frame
+#'         with the values of all tuning parameter combinations and the
+#'         training error rate for each combination (i.e. the \code{results}
+#'         element of the output of \code{caret::train}).
+#'         
+#'         If \code{return_trainobject = TRUE}, the output of \code{caret::train}
+#' 
+#' @export   
+train_smooth_data <- function(..., x = NULL, y = NULL, sm_method,
+                     preProcess = NULL, weights = NULL,
+                     metric = ifelse(is.factor(y), "Accuracy", "RMSE"),
+                     maximize = ifelse(metric %in% c("RMSE", "logLoss", "MAE", "logLoss"), FALSE, TRUE),
+                     trControl = caret::trainControl(method = "cv"), 
+                     tuneGrid = NULL,
+                     tuneLength = ifelse(trControl$method == "none", 1, 3),
+                     return_trainobject = FALSE) {
+
+  if(!requireNamespace("caret", quietly = TRUE)) {
+    stop("Package \"caret\" must be installed to use train_smooth_data", call. = FALSE)}
+  if("subset_by" %in% names(list(...))) {
+    stop("subset_by cannot be used with train_smooth_data, use dplyr::group_by
+and dplyr::reframe instead")}
+  
+  check_grouped(func_name = "reframe", name_for_error = "train_smooth_data",
+                subset_by = NULL)
+  
+  #Parse tuneGrid
+  if(!is.null(tuneGrid)) {
+    if(is.list(tuneGrid)) {tuneGrid <- expand.grid(tuneGrid)
+    } else if (!is.data.frame(tuneGrid)) {
+      warning("tuneGrid is not a list nor data.frame")
+    }
+  }
+  
+  #Create method argument
+  gcmethod <- 
+    makemethod_train_smooth_data(sm_method = sm_method, tuneGrid = tuneGrid, ...)
+  
+  #Run train
+  train <- caret::train(x = data.frame(x = x), y = y, method = gcmethod,
+                        preProcess = preProcess, weights = weights,
+                        metric = metric, maximize = maximize,
+                        trControl = trControl,
+                        tuneGrid = tuneGrid, tuneLength = tuneLength, ...)
+  
+  if(return_trainobject) {return(train)} else {return(train$results)}
+}
+
 
 # Processing: Derivatives ----
 
@@ -2995,30 +3400,33 @@ gc_smooth.spline <- function(x, y = NULL, ..., na.rm = TRUE) {
 #'                  
 #'                  This provides an internally-implemented approach similar
 #'                  to \code{dplyr::group_by} and \code{dplyr::mutate}
-#' @param window_width_n,window_width
+#' @param window_width,window_width_n,window_width_frac,window_width_n_frac
 #'                  Set how many data points are used to determine
 #'                  the slope at each point.
 #'                       
-#'                  When both are \code{NULL}, \code{calc_deriv} 
+#'                  When all are \code{NULL}, \code{calc_deriv} 
 #'                  calculates the difference or derivative
 #'                  of each point with the next point, appending
 #'                  \code{NA} at the end.
 #'                       
-#'                  When one or both are specified, a linear regression 
+#'                  When one or multiple are specified, a linear regression 
 #'                  is fit to all points in the window to determine the 
 #'                  slope.
 #'                       
 #'                  \code{window_width_n} specifies the width of the
 #'                  window in number of data points. \code{window_width}
 #'                  specifies the width of the window in units of \code{x}.
+#'                  \code{window_width_n_frac} specifies the width of the
+#'                  window as a fraction of the total number of data points.
 #'                       
-#'                  When using \code{window_width} and \code{window_width_n} 
-#'                  at the same time, windows are conservative. Points 
-#'                  included in each window will meet both the 
-#'                  \code{window_width} and the \code{window_width_n}.
+#'                  When using multiple window specifications at the same 
+#'                  time, windows are conservative. Points 
+#'                  included in each window will meet all of the 
+#'                  \code{window_width}, \code{window_width_n}, and
+#'                  \code{window_width_n_frac}.
 #'                  
 #'                  A value of \code{window_width_n = 3} or 
-#'                  \code{window_width_n = 5} is often the most effective.
+#'                  \code{window_width_n = 5} is often a good default.
 #' @param trans_y  One of \code{c("linear", "log")} specifying the
 #'                 transformation of y-values.
 #' 
@@ -3034,6 +3442,19 @@ gc_smooth.spline <- function(x, y = NULL, ..., na.rm = TRUE) {
 #'                 at or below 0 will become undefined and results will be 
 #'                 more sensitive to incorrect values of \code{blank}.
 #' @param na.rm logical whether NA's should be removed before analyzing
+#' @param warn_ungrouped logical whether warning should be issued when
+#'                       \code{smooth_data} is being called on ungrouped data
+#'                       and \code{subset_by = NULL}.
+#' @param warn_logtransform_warnings logical whether warning should be issued 
+#'                             when log(y) produced warnings.
+#' @param warn_logtransform_infinite logical whether warning should be issued 
+#'                             when log(y) produced infinite values that will
+#'                             be treated as \code{NA}.
+#' @param warn_window_toosmall logical whether warning should be issued 
+#'                             when only one data point is in the window
+#'                             set by \code{window_width_n}, 
+#'                             \code{window_width}, or \code{window_width_n_frac},
+#'                             and so \code{NA} will be returned.
 #' 
 #' @details For per-capita derivatives, \code{trans_y = 'linear'} and
 #'          \code{trans_y = 'log'} approach the same value as time resolution
@@ -3059,18 +3480,24 @@ gc_smooth.spline <- function(x, y = NULL, ..., na.rm = TRUE) {
 #' @export   
 calc_deriv <- function(y, x = NULL, return = "derivative", percapita = FALSE,
                        x_scale = 1, blank = NULL, subset_by = NULL, 
-                       window_width = NULL, window_width_n = NULL, 
-                       trans_y = "linear", na.rm = TRUE) {
+                       window_width = NULL, 
+                       window_width_n = NULL,
+                       window_width_frac = NULL,
+                       window_width_n_frac = NULL,
+                       trans_y = "linear", na.rm = TRUE,
+                       warn_ungrouped = TRUE,
+                       warn_logtransform_warnings = TRUE,
+                       warn_logtransform_infinite = TRUE,
+                       warn_window_toosmall = TRUE) {
   #Check inputs
-  if(!is.null(window_width_n) && window_width_n %% 2 == 0) {
-    stop("window_width_n must be an odd number")}
-  
   if(!return %in% c("derivative", "difference")) {
     stop("return must be one of c('derivative', 'difference')")}
   
   if(return == "difference" && 
-     (!is.null(window_width_n) | !is.null(window_width))) {
-    stop("return must be 'derivative' when window_width or window_width_n are used")}
+     (!is.null(window_width_n) | !is.null(window_width) | 
+      !is.null(window_width_n_frac))) {
+    stop("return must be 'derivative' when window_width, window_width_n, or 
+window_width_n_frac are used")}
   
   if(!trans_y %in% c("linear", "log")) {
     stop("trans_y must be one of c('linear', 'log')")}
@@ -3087,7 +3514,8 @@ calc_deriv <- function(y, x = NULL, return = "derivative", percapita = FALSE,
   x <- make.numeric(x, "x")
   y <- make.numeric(y, "y")
   
-  check_grouped(name_for_error = "calc_deriv", subset_by = subset_by)
+  if(warn_ungrouped) {
+    check_grouped(name_for_error = "calc_deriv", subset_by = subset_by)}
 
   #Set up subset_by
   if(is.null(subset_by)) {subset_by <- rep("A", length(y))}
@@ -3115,13 +3543,15 @@ calc_deriv <- function(y, x = NULL, return = "derivative", percapita = FALSE,
     if(trans_y == "log") {
       caught_log <- gcTryCatch(log(sub_y))
       if(!is.null(caught_log$warning)) {
-        warning(paste("during log-transformation,", caught_log$warning))
+        if(warn_logtransform_warnings) {
+          warning(paste("during log-transformation,", caught_log$warning))}
         caught_log$value[is.nan(caught_log$value)] <- NA}
       if(!is.null(caught_log$error)) {
         stop(paste("during log-transformation,", caught_log$error))}
       sub_y <- caught_log$value
       if(any(is.infinite(sub_y))) {
-        warning("infinite values created during log-transformation, treating as NA's")
+        if(warn_logtransform_infinite) {
+          warning("infinite values created during log-transformation, treating as NA's")}
         sub_y[is.infinite(sub_y)] <- NA
       }
     }
@@ -3139,7 +3569,8 @@ calc_deriv <- function(y, x = NULL, return = "derivative", percapita = FALSE,
     sub_y <- order_temp[["y"]]
     sub_x <- order_temp[["x"]]
     
-    if(is.null(window_width) & is.null(window_width_n)) {
+    if(is.null(window_width) & is.null(window_width_n) & 
+       is.null(window_width_n_frac)) {
       #Calculate differences
       sub_ans <- sub_y[2:length(sub_y)]-sub_y[1:(length(sub_y)-1)]
       
@@ -3159,9 +3590,15 @@ calc_deriv <- function(y, x = NULL, return = "derivative", percapita = FALSE,
 
       windows <- get_windows(x = sub_x, y = sub_y, edge_NA = TRUE,
                              window_width_n = window_width_n, 
-                             window_width = window_width)
+                             window_width = window_width,
+                             window_width_n_frac = window_width_n_frac,
+                             window_width_frac = window_width_frac)
       for (j in which(!is.na(windows))) {
         if(any(is.na(sub_y[windows[[j]]]) | is.infinite(sub_y[windows[[j]]]))) {
+          sub_ans[j] <- NA
+        } else if(length(windows[[j]]) < 2) {
+          if(warn_window_toosmall) {
+            warning("window only contains one data point, returning NA")}
           sub_ans[j] <- NA
         } else {
           #get slope
@@ -3229,29 +3666,29 @@ doubling_time <- function(y, x_scale = 1) {
 #'   
 #' @param y Numeric vector of y values in which to identify local extrema
 #' @param x Optional numeric vector of corresponding x values
-#' @param window_width Width of the window (in units of \code{x}) used to
-#'                   search for local extrema. A narrower width will be more
-#'                   sensitive to narrow local maxima/minima, while a wider
-#'                   width will be less sensitive to local maxima/minima.
-#' @param window_width_n The maximum number of data points a single 
-#'                      extrema-search step is allowed to take. For example,
-#'                      when maxima-finding, the function will not pass
-#'                      a valley consisting of more than \code{window_width_n}
-#'                      data points.
-#'                      
-#'                      A smaller \code{window_width_n} will be more sensitive 
-#'                      to narrow local maxima/minima, while a larger 
-#'                      \code{window_width_n} will be less sensitive to 
-#'                      narrow local maxima/minima.
-#' @param window_height The maximum change in \code{y} a single extrema-search
-#'                     step is allowed to take.  For example, when 
-#'                     maxima-finding, the function will not pass a
-#'                     valley deeper than \code{window_height}.
-#'                     
-#'                     A smaller \code{window_height} will be more sensitive 
-#'                     to shallow local maxima/minima, while a larger 
-#'                     \code{window_height} will be less sensitive to 
-#'                     shallow maxima/minima.
+#' @param window_width,window_width_n,window_height,window_width_frac,window_width_n_frac
+#'                   Arguments that set the width/height of the window used to
+#'                   search for local extrema.
+#'                   
+#'                   \code{window_width} is in units of \code{x}.
+#'                   
+#'                   \code{window_width_n} is in units of number of data points.
+#'                   
+#'                   \code{window_height} is the maximum change in \code{y} 
+#'                   a single extrema-search step is allowed to take.
+#'                   
+#'                   \code{window_width_n_frac} is as a fraction of the total
+#'                   number of data points.
+#'                   
+#'                   For example, the function will not pass a peak or valley
+#'                   more than \code{window_width_n} data points wide, nor
+#'                   a peak/valley taller or deeper than \code{window_height}.
+#'                   
+#'                   A narrower width will be more sensitive to narrow local 
+#'                   maxima/minima, while a wider width will be less sensitive 
+#'                   to local maxima/minima. A smaller height will be more 
+#'                   sensitive to shallow local maxima/minima, while a larger 
+#'                   height will be less sensitive to shallow maxima/minima.
 #' @param return One of c("index", "x", "y"), determining whether the function
 #'               will return the index, x value, or y value associated with the
 #'               identified extremas
@@ -3274,19 +3711,16 @@ doubling_time <- function(y, x_scale = 1) {
 #' 
 #' @details 
 #' For \code{find_local_extrema}, one of \code{window_width}, 
-#' \code{window_width_n}, or \code{window_height} must be provided.
+#' \code{window_width_n}, \code{window_height}, or \code{window_width_n_frac}
+#' must be provided.
 #' 
-#' For \code{first_minima} and \code{first_maxima}, if none of 
-#' \code{window_width}, \code{window_width_n}, or \code{window_height} are 
-#' provided, \code{window_width_n} is set to 20% of the data by default.
+#' For \code{first_minima} or \code{first_maxima}, set 
+#' \code{window_width_n_frac = NULL} to override default width behavior.
 #' 
-#' If multiple of \code{window_width}, \code{window_width_n}, or 
-#' \code{window_height} are provided, steps are limited conservatively 
-#' (a single step must meet all criteria)
+#' If multiple of \code{window_width}, \code{window_width_n},
+#' \code{window_height}, or \code{window_width_n_frac} are provided, steps 
+#' are limited conservatively (a single step must meet all criteria).
 #' 
-#' This function is designed to be compatible for use within
-#'  \code{dplyr::group_by} and \code{dplyr::summarize}
-#'  
 #' In the case of exact ties in \code{y} values within a window, only the 
 #' first local extrema is returned.
 #' 
@@ -3319,6 +3753,8 @@ find_local_extrema <- function(y, x = NULL,
                                window_width = NULL,
                                window_width_n = NULL,
                                window_height = NULL,
+                               window_width_frac = NULL,
+                               window_width_n_frac = NULL,
                                return = "index",
                                return_maxima = TRUE, return_minima = TRUE,
                                return_endpoints = TRUE,
@@ -3340,26 +3776,25 @@ find_local_extrema <- function(y, x = NULL,
   }
   
   #Check inputs
-  if (!return_maxima & !return_minima) {
+  if (!return_maxima && !return_minima) {
     stop("Both return_maxima and return_minima are FALSE, at least one must be TRUE")
   }
   #Check inputs
-  if (is.null(window_width_n) & is.null(window_height) & is.null(window_width)) {
-    stop("Either window_width, window_width_n, or window_height must be provided")
+  if (is.null(window_width_n) && is.null(window_height) &&
+      is.null(window_width) && is.null(window_width_n_frac)) {
+    stop("window_width, window_width_n, window_height, or window_width_n_frac must be specified")
   }
-  if (!is.null(window_width) & is.null(x)) {
+  if (!is.null(window_width) && is.null(x)) {
     stop("window_width is specified, but x is not provided")
   }
-  if (!is.null(window_width_n) && window_width_n%%2 == 0) {
-    stop("window_width_n must be an odd number")}
   
   if (!return %in% c("x", "y", "index")) {
     stop('return must be one of "x", "y", or "index"')
   }
-  if(!is.null(x) & length(x) != length(y)) {
+  if(!is.null(x) && length(x) != length(y)) {
     stop("x and y must be the same length")
   }
-  if(is.null(x) & return == "x") {stop('return = "x" but x is not provided')}
+  if(is.null(x) && return == "x") {stop('return = "x" but x is not provided')}
   
   #Numeric checks/coercion
   y <- make.numeric(y, "y")
@@ -3382,9 +3817,13 @@ find_local_extrema <- function(y, x = NULL,
   x <- order_temp[["x"]]
   y <- order_temp[["y"]]
   
-  windows <- get_windows(x = x, y = y, window_width_n = window_width_n,
-              window_width = window_width, window_height = window_height,
-              edge_NA = FALSE, force_height_multi_n = TRUE)
+  windows <- get_windows(x = x, y = y, 
+                         window_width_n = window_width_n,
+                         window_width = window_width, 
+                         window_height = window_height,
+                         window_width_n_frac = window_width_n_frac,
+                         window_width_frac = window_width_frac,
+                         edge_NA = FALSE, force_height_multi_n = TRUE)
   
   #ID extrema as those points that are the local max or min
   # in the window centered on them (all non-local extrema should point to
@@ -3433,16 +3872,14 @@ find_local_extrema <- function(y, x = NULL,
             
 #' @rdname ExtremaFunctions
 #' @export 
-first_maxima <- function(y, x = NULL, 
-                       window_width = NULL,
-                       window_width_n = NULL,
-                       window_height = NULL,
+first_maxima <- function(y, x = NULL,
+                         window_width = NULL,
+                         window_width_n = NULL,
+                         window_height = NULL,
+                         window_width_frac = NULL,
+                         window_width_n_frac = 0.2,
                        return = "index", return_endpoints = TRUE, 
                        ...) {
-  if(is.null(window_width) & is.null(window_width_n) & is.null(window_height)) {
-    window_width_n <- round(0.2*length(y)) - (1 - round(0.2*length(y))%%2)
-  }
-  
   if (any(c("return_maxima", "return_minima") %in% names(list(...)))) {
     stop("return_maxima and return_minima cannot be changed in first_peak, 
 use find_local_extrema for more flexibility")
@@ -3455,6 +3892,8 @@ use find_local_extrema for more flexibility")
                             window_width = window_width,
                             window_width_n = window_width_n,
                             window_height = window_height,
+                            window_width_frac = window_width_frac,
+                            window_width_n_frac = window_width_n_frac,
                             return = return, ...)[1])
 }
 
@@ -3464,12 +3903,10 @@ first_minima <- function(y, x = NULL,
                          window_width = NULL,
                          window_width_n = NULL,
                          window_height = NULL,
+                         window_width_frac = NULL,
+                         window_width_n_frac = 0.2,
                          return = "index", return_endpoints = TRUE, 
                          ...) {
-  if(is.null(window_width) & is.null(window_width_n) & is.null(window_height)) {
-    window_width_n <- round(0.2*length(y)) - (1 - round(0.2*length(y))%%2)
-  }
-  
   if (any(c("return_maxima", "return_minima") %in% names(list(...)))) {
     stop("return_maxima and return_minima cannot be changed in first_peak, 
 use find_local_extrema for more flexibility")
@@ -3482,6 +3919,8 @@ use find_local_extrema for more flexibility")
                             window_width = window_width,
                             window_width_n = window_width_n,
                             window_height = window_height,
+                            window_width_frac = window_width_frac,
+                            window_width_n_frac = window_width_n_frac,
                             return = return, ...)[1])
 }
 
@@ -3524,10 +3963,6 @@ use find_local_extrema for more flexibility")
 #'              \code{y} vector *including* \code{NA} values
 #' @param ... (for \code{first_above} and \code{first_below}) other arguments 
 #'            to pass to \code{find_threshold_crosses}
-#'              
-#' @details 
-#' This function is designed to be compatible for use within
-#'  \code{dplyr::group_by} and \code{dplyr::summarize}
 #'  
 #' @return 
 #'    \code{find_threshold_crosses} returns a vector corresponding to all the 
@@ -3692,16 +4127,18 @@ please use find_threshold_crosses for more flexibility")
 #'               be treated as zeros. If \code{FALSE}, area under the curve
 #'               for negative \code{y} values will be calculated normally,
 #'               effectively subtracting from the returned value.
+#' @param warn_xlim_out_of_range logical whether warning should be issued when 
+#'                             xlim is lower than the lowest x value or higher
+#'                             than the highest x value.
+#' @param warn_negative_y logical whether warning should be issued when 
+#'                        \code{neg.rm == FALSE} but some y values are below 0.
 #' 
-#' @details 
-#' This function is designed to be compatible for use within
-#'  \code{dplyr::group_by} and \code{dplyr::summarize}
-#'
 #' @return A scalar for the total area under the curve
 #'             
 #' @export
 auc <- function(x, y, xlim = NULL, blank = 0, subset = NULL,
-                na.rm = TRUE, neg.rm = FALSE) {
+                na.rm = TRUE, neg.rm = FALSE,
+                warn_xlim_out_of_range = TRUE, warn_negative_y = TRUE) {
   if(!is.vector(x)) {stop(paste("x is not a vector, it is class:", class(x)))}
   if(!is.vector(y)) {stop(paste("y is not a vector, it is class:", class(y)))}
   
@@ -3710,6 +4147,10 @@ auc <- function(x, y, xlim = NULL, blank = 0, subset = NULL,
   
   #take subset
   subset_temp <- take_subset(x = x, y = y, subset = subset)
+  
+  #Save original min and max x values so we don't warn when xlim is larger
+  #than range of x after NA's have been removed
+  x_orig <- c("min" = min(x, na.rm = TRUE), "max" = max(x, na.rm = TRUE))
   
   #remove nas
   dat <- rm_nas(x = subset_temp$x, y = subset_temp$y, 
@@ -3731,7 +4172,8 @@ auc <- function(x, y, xlim = NULL, blank = 0, subset = NULL,
     if(is.na(xlim[1])) {xlim[1] <- x[1]}
     if(is.na(xlim[2])) {xlim[2] <- x[length(x)]}
     if(xlim[1] < x[1]) {
-      warning("xlim specifies lower limit below the range of x\n")
+      if(warn_xlim_out_of_range && xlim[1] < x_orig[1]) {
+        warning("xlim specifies lower limit below the range of x\n")} 
       xlim[1] <- x[1]
     } else { #add lower xlim to the x vector and the interpolated y to y vector
       if (!(xlim[1] %in% x)) {
@@ -3750,7 +4192,8 @@ auc <- function(x, y, xlim = NULL, blank = 0, subset = NULL,
     }
        
     if(xlim[2] > x[length(x)]) {
-      warning("xlim specifies upper limit above the range of x\n")
+      if(warn_xlim_out_of_range && xlim[2] > x_orig[2]) {
+        warning("xlim specifies upper limit above the range of x\n")}
       xlim[2] <- x[length(x)]
     } else { #add upper xlim to the x vector and the interpolated y to y vector
       if (!(xlim[2] %in% x)) {
@@ -3773,7 +4216,7 @@ auc <- function(x, y, xlim = NULL, blank = 0, subset = NULL,
   
   if(any(y < 0)) {
     if(neg.rm == TRUE) {y[y < 0] <- 0
-    } else {warning("some y values are below 0")}
+    } else if(warn_negative_y) {warning("some y values are below 0")}
   }
   
   #Calculate auc
@@ -3788,7 +4231,7 @@ auc <- function(x, y, xlim = NULL, blank = 0, subset = NULL,
 #' 
 #' Lag time is calculated by projecting a tangent line at the point
 #' of maximum (per-capita) derivative backwards to find the time when it
-#' intersects with the starting y-value
+#' intersects with the minimum y-value
 #' 
 #' @param x Vector of x values (typically time)
 #' @param y Vector of y values (typically density)
@@ -3800,7 +4243,9 @@ auc <- function(x, y, xlim = NULL, blank = 0, subset = NULL,
 #'                 lag time assuming a transition to exponential growth
 #'                 
 #'                 \code{'linear'} is available for alternate uses
-#' @param na.rm a logical indicating whether missing values should be removed
+#' @param na.rm a logical indicating whether missing values or values that
+#'              become \code{NA} or infinite during log-transformation should 
+#'              be removed
 #' @param slope Slope to project from x1,y1 to y0 (typically per-capita growth
 #'              rate). If not provided, will be calculated as \code{max(deriv)}
 #' @param x1 x value (typically time) to project slope from. If not provided,
@@ -3809,19 +4254,34 @@ auc <- function(x, y, xlim = NULL, blank = 0, subset = NULL,
 #'           will be calculated as \code{y[which.max(deriv)]}.
 #' @param y0 y value (typically density) to find intersection of slope from
 #'             x1, y1 with. If not provided, will be calculated as \code{min(y)}
+#' @param warn_logtransform_warnings logical whether warning should be issued 
+#'                             when log(y) produced warnings.
+#' @param warn_logtransform_infinite logical whether warning should be issued 
+#'                             when log(y) produced infinite values that will
+#'                             be treated as \code{NA}.
+#' @param warn_min_y_mismatch logical whether warning should be issued when 
+#'                            \code{min(y)} does not equal 
+#'                            \code{min(y[!is.na(x)])}.
+#' @param warn_multiple_maxderiv logical whether warning should be issued when 
+#'                             there are multiple points in \code{deriv} that
+#'                             are tied for the highest, and only the first
+#'                             will be used.
+#' @param warn_one_lag logical whether warning should be issued when 
+#'                     some, but not all, inputs are vectorized, and
+#'                     only one lag time value will be returned.
+#' @param warn_no_lag logical whether warning should be issued when calculated
+#'                    lag time is less than the minimum value of x
+#'                            
 #' @details 
 #' For most typical uses, simply supply \code{x}, \code{y}, and \code{deriv}
 #' (using the per-capita derivative and \code{trans_y = 'log'}).
 #' 
 #' Advanced users may wish to use alternate values for the slope, origination
-#' point, or initial y-value. In that case, values can be supplied to
+#' point, or minimum y-value. In that case, values can be supplied to
 #' \code{slope}, \code{x1}, \code{y1}, and/or \code{y0}, which will override
 #' the default calculations. If and only if all of \code{slope}, \code{x1}, 
 #' \code{y1}, and \code{y0} are provided, \code{lag_time} is vectorized on
 #' their inputs and will return a vector of lag time values.
-#' 
-#' This function is designed to be compatible for use within
-#'  \code{dplyr::group_by} and \code{dplyr::summarize}
 #'
 #' @return Typically a scalar of the lag time in units of x. See Details for
 #' cases when value will be a vector.
@@ -3829,7 +4289,12 @@ auc <- function(x, y, xlim = NULL, blank = 0, subset = NULL,
 #' @export
 lag_time <- function(x = NULL, y = NULL, deriv = NULL, 
                      trans_y = "log", na.rm = TRUE,
-                     slope = NULL, x1 = NULL, y1 = NULL, y0 = NULL) {
+                     slope = NULL, x1 = NULL, y1 = NULL, y0 = NULL,
+                     warn_logtransform_warnings = TRUE,
+                     warn_logtransform_infinite = TRUE,
+                     warn_min_y_mismatch = TRUE,
+                     warn_multiple_maxderiv = TRUE,
+                     warn_one_lag = TRUE, warn_no_lag = TRUE) {
   x <- make.numeric(x, "x")
   y <- make.numeric(y, "y")
   deriv <- make.numeric(deriv, "deriv")
@@ -3838,22 +4303,20 @@ lag_time <- function(x = NULL, y = NULL, deriv = NULL,
   y1 <- make.numeric(y1, "y1")
   x1 <- make.numeric(x1, "x1")
   
-  narm_temp <- rm_nas(x = x, y = y, deriv = deriv, na.rm = na.rm)
-  x <- narm_temp[["x"]]
-  y <- narm_temp[["y"]]
-  deriv <- narm_temp[["deriv"]]
-  
+  #Log-transform y values, as requested
   if(trans_y == "log") {
     if(!is.null(y) && length(y) > 0) {
       caught_log <- gcTryCatch(log(y))
       if(!is.null(caught_log$warning)) {
-        warning(paste("during log-transformation,", caught_log$warning))
+        if(warn_logtransform_warnings) {
+          warning(paste("during log-transformation,", caught_log$warning))}
         caught_log$value[is.nan(caught_log$value)] <- NA}
       if(!is.null(caught_log$error)) {
         stop(paste("during log-transformation,", caught_log$error))}
       y <- caught_log$value
       if(any(is.infinite(y))) {
-        warning("infinite values created during log-transformation, treating as NA's")
+        if(warn_logtransform_infinite) {
+          warning("infinite values created during log-transformation, treating as NA's")}
         y[is.infinite(y)] <- NA
       }
     }
@@ -3861,6 +4324,23 @@ lag_time <- function(x = NULL, y = NULL, deriv = NULL,
     if(!is.null(y1)) {y1 <- log(y1)}
   }
   
+  #Calculate y0
+  if(is.null(y0)) {
+    if(is.null(y)) {stop("y or y0 must be provided")}
+    y_noNAs <- rm_nas(y = y, na.rm = na.rm)[["y"]] #remove NAs from y alone
+    if(length(y_noNAs) < 1 || any(is.na(y_noNAs))) {return(as.numeric(NA))}
+    if(warn_min_y_mismatch && na.rm == TRUE &&
+       min(y, na.rm = na.rm) != min(rm_nas(x = x, y = y, na.rm = na.rm)[["y"]])) {
+      warning("min(y) does not equal min(y[!is.na(x)])")}
+    #use vector of y's where the only values removed are those where y is NA
+    y0 <- min(y_noNAs)
+  }
+  
+  #Save original x values for later use
+  xy_noNAs <- rm_nas(x = x, y = y, na.rm = TRUE)
+  
+  #remove NA's (including originals and those generated by log-transformation)
+  # from any position where x, y, or deriv is NA
   narm_temp <- rm_nas(x = x, y = y, deriv = deriv, na.rm = na.rm)
   x <- narm_temp[["x"]]
   y <- narm_temp[["y"]]
@@ -3869,15 +4349,10 @@ lag_time <- function(x = NULL, y = NULL, deriv = NULL,
   
   if(is.null(slope)) {
     if(is.null(deriv)) {stop("deriv or slope must be provided")}
-    if(length(deriv) < 1) {return(NA)}
+    if(length(deriv) < 1) {return(as.numeric(NA))}
     slope <- max(deriv, na.rm = na.rm)
   }
-  if(length(y) < 2 && (is.null(y0) || is.null(y1))) {return(NA)}
-  if(is.null(y0)) {
-    if(is.null(y)) {stop("y or y0 must be provided")}
-    if(length(y) < 1) {return(NA)}
-    y0 <- min(y, na.rm = na.rm)
-  }
+  
   if(xor(is.null(x1), is.null(y1))) {
     stop("both x1 and y1, or neither, must be specified")
   } else if(is.null(y1)) {
@@ -3885,20 +4360,24 @@ lag_time <- function(x = NULL, y = NULL, deriv = NULL,
       if(is.null(y)) {stop("y1, or deriv and y, must be provided")}
       if(is.null(x)) {stop("x1, or deriv and x, must be provided")}
     }
-    if(length(deriv) < 1 || length(y) < 1 || length(x) < 1) {return(NA)}
+    if(length(deriv) < 1 || length(y) < 1 || length(x) < 1) {return(as.numeric(NA))}
     idxs <- which(deriv == max(deriv, na.rm = na.rm))
-    if(length(idxs) > 1) {
+    if(warn_multiple_maxderiv && length(idxs) > 1) {
       warning("multiple timepoints have the maximum derivative, using the first")}
     y1 <- y[idxs[1]]
     x1 <- x[idxs[1]]
   }
 
   if(!all_same(c(length(y0), length(y1), length(slope), length(x1)))) {
-    warning("Only returning the first lag time value")
+    if(warn_one_lag) {warning("Only returning the first lag time value")}
     y0 <- y0[1]; y1 <- y1[1]; slope <- slope[1]; x1 <- x1[1]
   }
-  
-  return(solve_linear(x1 = x1, y1 = y1, m = slope, y2 = y0, named = FALSE))
+  lagvals <- solve_linear(x1 = x1, y1 = y1, m = slope, y2 = y0, named = FALSE)
+
+  if(warn_no_lag && length(lagvals) == 1 && !is.na(lagvals) && 
+     !is.null(xy_noNAs[["x"]]) && lagvals < min(xy_noNAs[["x"]])) {
+    warning("lag time is less than min(x), indicating no identifiable lag phase")}
+  return(lagvals)
 }
 
 # Legacy Code ----
@@ -3962,9 +4441,6 @@ lag_time <- function(x = NULL, y = NULL, deriv = NULL,
 #' \code{window_height} are provided, default value of \code{window_width_n}
 #' will be used.
 #' 
-#' This function is designed to be compatible for use within
-#'  \code{dplyr::group_by} and \code{dplyr::summarize}
-#'                    
 #' @export    
 first_peak <- function(y, x = NULL, 
                        window_width = NULL,

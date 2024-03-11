@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Mike Blazanin" />
+
+
+<title>Using make_design to generate experimental designs</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Using make_design to generate experimental
+designs</h1>
+<h4 class="author">Mike Blazanin</h4>
+
+
+<div id="TOC">
+<ul>
+<li><a href="#where-are-we-so-far" id="toc-where-are-we-so-far">Where
+are we so far?</a></li>
+<li><a href="#including-design-elements" id="toc-including-design-elements">Including design elements</a>
+<ul>
+<li><a href="#an-example-with-a-single-design" id="toc-an-example-with-a-single-design">An example with a single
+design</a></li>
+<li><a href="#a-few-notes-on-the-pattern" id="toc-a-few-notes-on-the-pattern">A few notes on the pattern</a></li>
+<li><a href="#continuing-with-the-example-multiple-designs" id="toc-continuing-with-the-example-multiple-designs">Continuing with
+the example: multiple designs</a></li>
+<li><a href="#saving-designs-to-files" id="toc-saving-designs-to-files">Saving designs to files</a>
+<ul>
+<li><a href="#saving-tidy-shaped-designs" id="toc-saving-tidy-shaped-designs">Saving tidy-shaped designs</a></li>
+<li><a href="#saving-block-shaped-designs" id="toc-saving-block-shaped-designs">Saving block-shaped designs</a>
+<ul>
+<li><a href="#saving-block-shaped-designs-to-multiple-files" id="toc-saving-block-shaped-designs-to-multiple-files">Saving
+block-shaped designs to multiple files</a></li>
+<li><a href="#saving-block-shaped-designs-to-a-single-file" id="toc-saving-block-shaped-designs-to-a-single-file">Saving
+block-shaped designs to a single file</a></li>
+</ul></li>
+</ul></li>
+</ul></li>
+<li><a href="#merging-growth-curve-data-with-designs" id="toc-merging-growth-curve-data-with-designs">Merging growth curve
+data with designs</a></li>
+</ul>
+</div>
+
+<div id="where-are-we-so-far" class="section level1">
+<h1>Where are we so far?</h1>
+<ol style="list-style-type: decimal">
+<li>Introduction: <code>vignette(&quot;gc01_gcplyr&quot;)</code></li>
+<li>Importing and reshaping data:
+<code>vignette(&quot;gc02_import_reshape&quot;)</code></li>
+<li>Incorporating experimental designs:**
+<code>vignette(&quot;gc03_incorporate_designs&quot;)</code></li>
+<li>Pre-processing and plotting your data:
+<code>vignette(&quot;gc04_preprocess_plot&quot;)</code></li>
+<li>Processing your data: <code>vignette(&quot;gc05_process&quot;)</code></li>
+<li>Analyzing your data: <code>vignette(&quot;gc06_analyze&quot;)</code></li>
+<li>Dealing with noise: <code>vignette(&quot;gc07_noise&quot;)</code></li>
+<li>Best practices and other tips:
+<code>vignette(&quot;gc08_conclusion&quot;)</code></li>
+<li>Working with multiple plates:
+<code>vignette(&quot;gc09_multiple_plates&quot;)</code></li>
+<li><strong>Using make_design to generate experimental designs:
+<code>vignette(&quot;gc10_using_make_design&quot;)</code></strong></li>
+</ol>
+<p>In <code>vignette(&quot;gc03_incorporate_designs&quot;)</code>, we focused on
+importing designs from files, since that’s the most common way of
+creating designs. Here, we’re going to show how designs can
+alternatively be generated within <code>R</code> using the
+<code>gcplyr</code> function <code>make_design</code>.</p>
+<p>If you haven’t already, load the necessary packages.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(gcplyr)</span></code></pre></div>
+</div>
+<div id="including-design-elements" class="section level1">
+<h1>Including design elements</h1>
+<p>As a reminder, <code>gcplyr</code> enables incorporation of design
+elements in two ways:</p>
+<ol style="list-style-type: decimal">
+<li>Designs can be imported from files</li>
+<li>Designs can be generated in <code>R</code> using
+<code>make_design</code></li>
+</ol>
+<p>For generating designs in <code>R</code>, <code>make_design</code>
+can create:</p>
+<ul>
+<li>block-shaped data.frames with your design information (for saving to
+files)</li>
+<li>tidy-shaped data.frames with your design information (for saving to
+files and merging with tidy-shaped data)</li>
+</ul>
+<div id="an-example-with-a-single-design" class="section level2">
+<h2>An example with a single design</h2>
+<p>Let’s start with a simple design.</p>
+<p>Imagine you have a 96 well plate (12 columns and 8 rows) with a
+different bacterial strain in each row, leaving the first and last rows
+and columns empty.</p>
+<table style="width:100%;">
+<colgroup>
+<col width="16%" />
+<col width="15%" />
+<col width="15%" />
+<col width="15%" />
+<col width="5%" />
+<col width="16%" />
+<col width="15%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Row names</th>
+<th>Column 1</th>
+<th>Column 2</th>
+<th>Column 3</th>
+<th>…</th>
+<th>Column 11</th>
+<th>Column 12</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Row A</td>
+<td>Blank</td>
+<td>Blank</td>
+<td>Blank</td>
+<td>…</td>
+<td>Blank</td>
+<td>Blank</td>
+</tr>
+<tr class="even">
+<td>Row B</td>
+<td>Blank</td>
+<td>Strain #1</td>
+<td>Strain #1</td>
+<td>…</td>
+<td>Strain #1</td>
+<td>Blank</td>
+</tr>
+<tr class="odd">
+<td>Row B</td>
+<td>Blank</td>
+<td>Strain #2</td>
+<td>Strain #2</td>
+<td>…</td>
+<td>Strain #2</td>
+<td>Blank</td>
+</tr>
+<tr class="even">
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+</tr>
+<tr class="odd">
+<td>Row G</td>
+<td>Blank</td>
+<td>Strain #5</td>
+<td>Strain #5</td>
+<td>…</td>
+<td>Strain #5</td>
+<td>Blank</td>
+</tr>
+<tr class="even">
+<td>Row G</td>
+<td>Blank</td>
+<td>Strain #6</td>
+<td>Strain #6</td>
+<td>…</td>
+<td>Strain #6</td>
+<td>Blank</td>
+</tr>
+<tr class="odd">
+<td>Row H</td>
+<td>Blank</td>
+<td>Blank</td>
+<td>Blank</td>
+<td>…</td>
+<td>Blank</td>
+<td>Blank</td>
+</tr>
+</tbody>
+</table>
+<p>Typing a design like this manually into a spreadsheet can be tedious.
+But generating it with <code>make_design</code> is easier.</p>
+<p><code>make_design</code> first needs some general information, like
+the <code>nrows</code> and <code>ncols</code> in the plate, and the
+<code>output_format</code> you’d like (typically <code>blocks</code> or
+<code>tidy</code>).</p>
+<p>Then, for each different design component, <code>make_design</code>
+needs five different pieces of information:</p>
+<ul>
+<li>a vector containing the possible values</li>
+<li>a vector specifying which rows these values should be applied
+to</li>
+<li>a vector specifying which columns these values should be applied
+to</li>
+<li>a string or vector of the pattern of these values</li>
+<li>a Boolean for whether this pattern should be filled byrow (defaults
+to TRUE)</li>
+</ul>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>my_design_blk <span class="ot">&lt;-</span> <span class="fu">make_design</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>  <span class="at">output_format =</span> <span class="st">&quot;blocks&quot;</span>,</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>  <span class="at">nrows =</span> <span class="dv">8</span>, <span class="at">ncols =</span> <span class="dv">12</span>, </span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>  <span class="at">Bacteria =</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="st">&quot;Str1&quot;</span>, <span class="st">&quot;Str2&quot;</span>, <span class="st">&quot;Str3&quot;</span>, <span class="st">&quot;Str4&quot;</span>, <span class="st">&quot;Str5&quot;</span>, <span class="st">&quot;Str6&quot;</span>),</span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>                  <span class="dv">2</span><span class="sc">:</span><span class="dv">7</span>,</span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>                  <span class="dv">2</span><span class="sc">:</span><span class="dv">11</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>                  <span class="st">&quot;123456&quot;</span>,</span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>                  <span class="cn">FALSE</span>)</span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>)</span></code></pre></div>
+<p>So for our example above, we can see:</p>
+<ul>
+<li>the possible values are
+<code>c(&quot;Strain 1&quot;, &quot;Strain 2&quot;, &quot;Strain 3&quot;, &quot;Strain 4&quot;, &quot;Strain 5&quot;, &quot;Strain 6&quot;)</code></li>
+<li>the rows these values should be applied to are <code>2:7</code></li>
+<li>the columns these values should be applied to are
+<code>2:11</code></li>
+<li>the pattern these values should be filled in by is
+<code>&quot;123456&quot;</code></li>
+<li>and these values should <em>not</em> be filled by row (they should
+be filled by column)</li>
+</ul>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>my_design_blk</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="co">#&gt; [[1]]</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co">#&gt; [[1]]$data</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co">#&gt;   1  2      3      4      5      6      7      8      9      10     11     12</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a><span class="co">#&gt; A NA NA     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="co">#&gt; B NA &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; NA</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="co">#&gt; C NA &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; NA</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="co">#&gt; D NA &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; NA</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="co">#&gt; E NA &quot;Str4&quot; &quot;Str4&quot; &quot;Str4&quot; &quot;Str4&quot; &quot;Str4&quot; &quot;Str4&quot; &quot;Str4&quot; &quot;Str4&quot; &quot;Str4&quot; &quot;Str4&quot; NA</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="co">#&gt; F NA &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; NA</span></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="co">#&gt; G NA &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; NA</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="co">#&gt; H NA NA     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co">#&gt; [[1]]$metadata</span></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co">#&gt; block_name </span></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="co">#&gt; &quot;Bacteria&quot;</span></span></code></pre></div>
+<p>This produces a <code>data.frame</code> with <code>Bacteria</code> as
+the <code>block_name</code> in the metadata. If we save this design to a
+file or transform it to tidy-shaped, this <code>block_name</code>
+metadata will come in handy.</p>
+</div>
+<div id="a-few-notes-on-the-pattern" class="section level2">
+<h2>A few notes on the pattern</h2>
+<p>The pattern in <code>make_design</code> is flexible to make it easy
+to input designs.</p>
+<p><strong>The “0” character is reserved for <code>NA</code>
+values</strong>, and can be put into your pattern anywhere you’d like to
+have the value be <code>NA</code></p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>my_design_blk <span class="ot">&lt;-</span> <span class="fu">make_design</span>(</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  <span class="at">output_format =</span> <span class="st">&quot;blocks&quot;</span>,</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="at">nrows =</span> <span class="dv">8</span>, <span class="at">ncols =</span> <span class="dv">12</span>, </span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  <span class="at">Bacteria =</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="st">&quot;Str1&quot;</span>, <span class="st">&quot;Str2&quot;</span>, <span class="st">&quot;Str3&quot;</span>, </span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>                    <span class="st">&quot;Str4&quot;</span>, <span class="st">&quot;Str5&quot;</span>, <span class="st">&quot;Str6&quot;</span>),</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>                  <span class="dv">2</span><span class="sc">:</span><span class="dv">7</span>,</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>                  <span class="dv">2</span><span class="sc">:</span><span class="dv">11</span>,</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>                  <span class="st">&quot;123056&quot;</span>,</span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>                  <span class="cn">FALSE</span>)</span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>)</span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>my_design_blk</span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a><span class="co">#&gt; [[1]]</span></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="co">#&gt; [[1]]$data</span></span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a><span class="co">#&gt;   1  2      3      4      5      6      7      8      9      10     11     12</span></span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a><span class="co">#&gt; A NA NA     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA</span></span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a><span class="co">#&gt; B NA &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; NA</span></span>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a><span class="co">#&gt; C NA &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; NA</span></span>
+<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a><span class="co">#&gt; D NA &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; NA</span></span>
+<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a><span class="co">#&gt; E NA NA     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA</span></span>
+<span id="cb4-20"><a href="#cb4-20" tabindex="-1"></a><span class="co">#&gt; F NA &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; NA</span></span>
+<span id="cb4-21"><a href="#cb4-21" tabindex="-1"></a><span class="co">#&gt; G NA &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; NA</span></span>
+<span id="cb4-22"><a href="#cb4-22" tabindex="-1"></a><span class="co">#&gt; H NA NA     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA</span></span>
+<span id="cb4-23"><a href="#cb4-23" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb4-24"><a href="#cb4-24" tabindex="-1"></a><span class="co">#&gt; [[1]]$metadata</span></span>
+<span id="cb4-25"><a href="#cb4-25" tabindex="-1"></a><span class="co">#&gt; block_name </span></span>
+<span id="cb4-26"><a href="#cb4-26" tabindex="-1"></a><span class="co">#&gt; &quot;Bacteria&quot;</span></span></code></pre></div>
+<p>In the previous examples, I used the numbers 1 through 6 to
+correspond to our values. If you have more than 9 values, you can use
+letters too. By default, the order is numbers first, then uppercase
+letters, then lowercase letters (so “A” is the 10th index). However, if
+you’d like to only use letters, you can simply specify a different
+<code>lookup_tbl_start</code> so that <code>make_design</code> knows
+what letter you’re using as the <code>1</code> index.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>my_design_blk <span class="ot">&lt;-</span> <span class="fu">make_design</span>(</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="at">output_format =</span> <span class="st">&quot;blocks&quot;</span>,</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="at">nrows =</span> <span class="dv">8</span>, <span class="at">ncols =</span> <span class="dv">12</span>, <span class="at">lookup_tbl_start =</span> <span class="st">&quot;A&quot;</span>,</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>  <span class="at">Bacteria =</span> <span class="fu">list</span>(</span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>    <span class="fu">c</span>(<span class="st">&quot;Str1&quot;</span>, <span class="st">&quot;Str2&quot;</span>, <span class="st">&quot;Str3&quot;</span>, <span class="st">&quot;Str4&quot;</span>, <span class="st">&quot;Str5&quot;</span>, <span class="st">&quot;Str6&quot;</span>),</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>    <span class="dv">2</span><span class="sc">:</span><span class="dv">7</span>,</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>    <span class="dv">2</span><span class="sc">:</span><span class="dv">11</span>,</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>    <span class="st">&quot;ABCDEF&quot;</span>,</span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>    <span class="cn">FALSE</span>)</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>)</span></code></pre></div>
+<p>You can also specify the pattern as a vector rather than a
+string.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>my_design_blk <span class="ot">&lt;-</span> <span class="fu">make_design</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  <span class="at">output_format =</span> <span class="st">&quot;blocks&quot;</span>,</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  <span class="at">nrows =</span> <span class="dv">8</span>, <span class="at">ncols =</span> <span class="dv">12</span>,</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  <span class="at">Bacteria =</span> <span class="fu">list</span>(</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>    <span class="fu">c</span>(<span class="st">&quot;Str1&quot;</span>, <span class="st">&quot;Str2&quot;</span>, <span class="st">&quot;Str3&quot;</span>, <span class="st">&quot;Str4&quot;</span>, <span class="st">&quot;Str5&quot;</span>, <span class="st">&quot;Str6&quot;</span>),</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>    <span class="dv">2</span><span class="sc">:</span><span class="dv">7</span>,</span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>    <span class="dv">2</span><span class="sc">:</span><span class="dv">11</span>,</span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>    <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>,<span class="dv">4</span>,<span class="dv">5</span>,<span class="dv">6</span>),</span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>    <span class="cn">FALSE</span>)</span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>)</span></code></pre></div>
+</div>
+<div id="continuing-with-the-example-multiple-designs" class="section level2">
+<h2>Continuing with the example: multiple designs</h2>
+<p>Now let’s return to our example growth curve experiment. <em>In
+addition</em> to having a different bacterial strain in each row, we now
+also have a different media in each column of the plate.</p>
+<table style="width:100%;">
+<colgroup>
+<col width="16%" />
+<col width="15%" />
+<col width="15%" />
+<col width="15%" />
+<col width="5%" />
+<col width="16%" />
+<col width="15%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Row names</th>
+<th>Column 1</th>
+<th>Column 2</th>
+<th>Column 3</th>
+<th>…</th>
+<th>Column 11</th>
+<th>Column 12</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Row A</td>
+<td>Blank</td>
+<td>Blank</td>
+<td>Blank</td>
+<td>…</td>
+<td>Blank</td>
+<td>Blank</td>
+</tr>
+<tr class="even">
+<td>Row B</td>
+<td>Blank</td>
+<td>Media #1</td>
+<td>Media #2</td>
+<td>…</td>
+<td>Media #10</td>
+<td>Blank</td>
+</tr>
+<tr class="odd">
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+</tr>
+<tr class="even">
+<td>Row G</td>
+<td>Blank</td>
+<td>Media #1</td>
+<td>Media #2</td>
+<td>…</td>
+<td>Media #10</td>
+<td>Blank</td>
+</tr>
+<tr class="odd">
+<td>Row H</td>
+<td>Blank</td>
+<td>Blank</td>
+<td>Blank</td>
+<td>…</td>
+<td>Blank</td>
+<td>Blank</td>
+</tr>
+</tbody>
+</table>
+<p>We can generate both designs with <code>make_design</code>:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>my_design_blk <span class="ot">&lt;-</span> <span class="fu">make_design</span>(</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  <span class="at">output_format =</span> <span class="st">&quot;blocks&quot;</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  <span class="at">nrows =</span> <span class="dv">8</span>, <span class="at">ncols =</span> <span class="dv">12</span>, <span class="at">lookup_tbl_start =</span> <span class="st">&quot;a&quot;</span>,</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  <span class="at">Bacteria =</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="st">&quot;Str1&quot;</span>, <span class="st">&quot;Str2&quot;</span>, <span class="st">&quot;Str3&quot;</span>, </span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>                    <span class="st">&quot;Str4&quot;</span>, <span class="st">&quot;Str5&quot;</span>, <span class="st">&quot;Str6&quot;</span>),</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>                  <span class="dv">2</span><span class="sc">:</span><span class="dv">7</span>,</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>                  <span class="dv">2</span><span class="sc">:</span><span class="dv">11</span>,</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>                  <span class="st">&quot;abcdef&quot;</span>,</span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>                  <span class="cn">FALSE</span>),</span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>  <span class="at">Media =</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="st">&quot;Med1&quot;</span>, <span class="st">&quot;Med2&quot;</span>, <span class="st">&quot;Med3&quot;</span>,</span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>                 <span class="st">&quot;Med4&quot;</span>, <span class="st">&quot;Med5&quot;</span>, <span class="st">&quot;Med6&quot;</span>,</span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>                 <span class="st">&quot;Med7&quot;</span>, <span class="st">&quot;Med8&quot;</span>, <span class="st">&quot;Med9&quot;</span>,</span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>                 <span class="st">&quot;Med10&quot;</span>, <span class="st">&quot;Med11&quot;</span>, <span class="st">&quot;Med12&quot;</span>),</span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a>               <span class="dv">2</span><span class="sc">:</span><span class="dv">7</span>,</span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a>               <span class="dv">2</span><span class="sc">:</span><span class="dv">11</span>,</span>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a>               <span class="st">&quot;abcdefghij&quot;</span>)</span>
+<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a>  )</span>
+<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a></span>
+<span id="cb7-19"><a href="#cb7-19" tabindex="-1"></a>my_design_blk</span>
+<span id="cb7-20"><a href="#cb7-20" tabindex="-1"></a><span class="co">#&gt; [[1]]</span></span>
+<span id="cb7-21"><a href="#cb7-21" tabindex="-1"></a><span class="co">#&gt; [[1]]$data</span></span>
+<span id="cb7-22"><a href="#cb7-22" tabindex="-1"></a><span class="co">#&gt;   1  2      3      4      5      6      7      8      9      10     11     12</span></span>
+<span id="cb7-23"><a href="#cb7-23" tabindex="-1"></a><span class="co">#&gt; A NA NA     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA</span></span>
+<span id="cb7-24"><a href="#cb7-24" tabindex="-1"></a><span class="co">#&gt; B NA &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; NA</span></span>
+<span id="cb7-25"><a href="#cb7-25" tabindex="-1"></a><span class="co">#&gt; C NA &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; NA</span></span>
+<span id="cb7-26"><a href="#cb7-26" tabindex="-1"></a><span class="co">#&gt; D NA &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; NA</span></span>
+<span id="cb7-27"><a href="#cb7-27" tabindex="-1"></a><span class="co">#&gt; E NA &quot;Str4&quot; &quot;Str4&quot; &quot;Str4&quot; &quot;Str4&quot; &quot;Str4&quot; &quot;Str4&quot; &quot;Str4&quot; &quot;Str4&quot; &quot;Str4&quot; &quot;Str4&quot; NA</span></span>
+<span id="cb7-28"><a href="#cb7-28" tabindex="-1"></a><span class="co">#&gt; F NA &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; NA</span></span>
+<span id="cb7-29"><a href="#cb7-29" tabindex="-1"></a><span class="co">#&gt; G NA &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; NA</span></span>
+<span id="cb7-30"><a href="#cb7-30" tabindex="-1"></a><span class="co">#&gt; H NA NA     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA</span></span>
+<span id="cb7-31"><a href="#cb7-31" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb7-32"><a href="#cb7-32" tabindex="-1"></a><span class="co">#&gt; [[1]]$metadata</span></span>
+<span id="cb7-33"><a href="#cb7-33" tabindex="-1"></a><span class="co">#&gt; block_name </span></span>
+<span id="cb7-34"><a href="#cb7-34" tabindex="-1"></a><span class="co">#&gt; &quot;Bacteria&quot; </span></span>
+<span id="cb7-35"><a href="#cb7-35" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb7-36"><a href="#cb7-36" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb7-37"><a href="#cb7-37" tabindex="-1"></a><span class="co">#&gt; [[2]]</span></span>
+<span id="cb7-38"><a href="#cb7-38" tabindex="-1"></a><span class="co">#&gt; [[2]]$data</span></span>
+<span id="cb7-39"><a href="#cb7-39" tabindex="-1"></a><span class="co">#&gt;   1  2      3      4      5      6      7      8      9      10     11      12</span></span>
+<span id="cb7-40"><a href="#cb7-40" tabindex="-1"></a><span class="co">#&gt; A NA NA     NA     NA     NA     NA     NA     NA     NA     NA     NA      NA</span></span>
+<span id="cb7-41"><a href="#cb7-41" tabindex="-1"></a><span class="co">#&gt; B NA &quot;Med1&quot; &quot;Med2&quot; &quot;Med3&quot; &quot;Med4&quot; &quot;Med5&quot; &quot;Med6&quot; &quot;Med7&quot; &quot;Med8&quot; &quot;Med9&quot; &quot;Med10&quot; NA</span></span>
+<span id="cb7-42"><a href="#cb7-42" tabindex="-1"></a><span class="co">#&gt; C NA &quot;Med1&quot; &quot;Med2&quot; &quot;Med3&quot; &quot;Med4&quot; &quot;Med5&quot; &quot;Med6&quot; &quot;Med7&quot; &quot;Med8&quot; &quot;Med9&quot; &quot;Med10&quot; NA</span></span>
+<span id="cb7-43"><a href="#cb7-43" tabindex="-1"></a><span class="co">#&gt; D NA &quot;Med1&quot; &quot;Med2&quot; &quot;Med3&quot; &quot;Med4&quot; &quot;Med5&quot; &quot;Med6&quot; &quot;Med7&quot; &quot;Med8&quot; &quot;Med9&quot; &quot;Med10&quot; NA</span></span>
+<span id="cb7-44"><a href="#cb7-44" tabindex="-1"></a><span class="co">#&gt; E NA &quot;Med1&quot; &quot;Med2&quot; &quot;Med3&quot; &quot;Med4&quot; &quot;Med5&quot; &quot;Med6&quot; &quot;Med7&quot; &quot;Med8&quot; &quot;Med9&quot; &quot;Med10&quot; NA</span></span>
+<span id="cb7-45"><a href="#cb7-45" tabindex="-1"></a><span class="co">#&gt; F NA &quot;Med1&quot; &quot;Med2&quot; &quot;Med3&quot; &quot;Med4&quot; &quot;Med5&quot; &quot;Med6&quot; &quot;Med7&quot; &quot;Med8&quot; &quot;Med9&quot; &quot;Med10&quot; NA</span></span>
+<span id="cb7-46"><a href="#cb7-46" tabindex="-1"></a><span class="co">#&gt; G NA &quot;Med1&quot; &quot;Med2&quot; &quot;Med3&quot; &quot;Med4&quot; &quot;Med5&quot; &quot;Med6&quot; &quot;Med7&quot; &quot;Med8&quot; &quot;Med9&quot; &quot;Med10&quot; NA</span></span>
+<span id="cb7-47"><a href="#cb7-47" tabindex="-1"></a><span class="co">#&gt; H NA NA     NA     NA     NA     NA     NA     NA     NA     NA     NA      NA</span></span>
+<span id="cb7-48"><a href="#cb7-48" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb7-49"><a href="#cb7-49" tabindex="-1"></a><span class="co">#&gt; [[2]]$metadata</span></span>
+<span id="cb7-50"><a href="#cb7-50" tabindex="-1"></a><span class="co">#&gt; block_name </span></span>
+<span id="cb7-51"><a href="#cb7-51" tabindex="-1"></a><span class="co">#&gt;    &quot;Media&quot;</span></span></code></pre></div>
+<p>However, the real strength of <code>make_design</code> is that it is
+not limited to simple alternating patterns. <code>make_design</code> can
+use irregular patterns too, replicating them as needed to fill all the
+wells.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>my_design_blk <span class="ot">&lt;-</span> <span class="fu">make_design</span>(</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  <span class="at">output_format =</span> <span class="st">&quot;blocks&quot;</span>,</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  <span class="at">nrows =</span> <span class="dv">8</span>, <span class="at">ncols =</span> <span class="dv">12</span>, <span class="at">lookup_tbl_start =</span> <span class="st">&quot;a&quot;</span>,</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>  <span class="at">Bacteria =</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="st">&quot;Str1&quot;</span>, <span class="st">&quot;Str2&quot;</span>),</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>                  <span class="dv">2</span><span class="sc">:</span><span class="dv">7</span>,</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>                  <span class="dv">2</span><span class="sc">:</span><span class="dv">11</span>,</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>                  <span class="st">&quot;abaaabbbab&quot;</span>,</span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>                  <span class="cn">FALSE</span>),</span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>  <span class="at">Media =</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="st">&quot;Med1&quot;</span>, <span class="st">&quot;Med2&quot;</span>, <span class="st">&quot;Med3&quot;</span>),</span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>               <span class="dv">2</span><span class="sc">:</span><span class="dv">7</span>,</span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>               <span class="dv">2</span><span class="sc">:</span><span class="dv">11</span>,</span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a>               <span class="st">&quot;aabbbc000abc&quot;</span>))</span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a></span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a>my_design_blk</span>
+<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a><span class="co">#&gt; [[1]]</span></span>
+<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a><span class="co">#&gt; [[1]]$data</span></span>
+<span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a><span class="co">#&gt;   1  2      3      4      5      6      7      8      9      10     11     12</span></span>
+<span id="cb8-18"><a href="#cb8-18" tabindex="-1"></a><span class="co">#&gt; A NA NA     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA</span></span>
+<span id="cb8-19"><a href="#cb8-19" tabindex="-1"></a><span class="co">#&gt; B NA &quot;Str1&quot; &quot;Str2&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str2&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; NA</span></span>
+<span id="cb8-20"><a href="#cb8-20" tabindex="-1"></a><span class="co">#&gt; C NA &quot;Str2&quot; &quot;Str2&quot; &quot;Str1&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str1&quot; &quot;Str2&quot; &quot;Str2&quot; NA</span></span>
+<span id="cb8-21"><a href="#cb8-21" tabindex="-1"></a><span class="co">#&gt; D NA &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str2&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str2&quot; NA</span></span>
+<span id="cb8-22"><a href="#cb8-22" tabindex="-1"></a><span class="co">#&gt; E NA &quot;Str1&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str1&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; NA</span></span>
+<span id="cb8-23"><a href="#cb8-23" tabindex="-1"></a><span class="co">#&gt; F NA &quot;Str1&quot; &quot;Str1&quot; &quot;Str2&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str2&quot; &quot;Str1&quot; &quot;Str1&quot; NA</span></span>
+<span id="cb8-24"><a href="#cb8-24" tabindex="-1"></a><span class="co">#&gt; G NA &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str1&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str1&quot; &quot;Str2&quot; NA</span></span>
+<span id="cb8-25"><a href="#cb8-25" tabindex="-1"></a><span class="co">#&gt; H NA NA     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA</span></span>
+<span id="cb8-26"><a href="#cb8-26" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb8-27"><a href="#cb8-27" tabindex="-1"></a><span class="co">#&gt; [[1]]$metadata</span></span>
+<span id="cb8-28"><a href="#cb8-28" tabindex="-1"></a><span class="co">#&gt; block_name </span></span>
+<span id="cb8-29"><a href="#cb8-29" tabindex="-1"></a><span class="co">#&gt; &quot;Bacteria&quot; </span></span>
+<span id="cb8-30"><a href="#cb8-30" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb8-31"><a href="#cb8-31" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb8-32"><a href="#cb8-32" tabindex="-1"></a><span class="co">#&gt; [[2]]</span></span>
+<span id="cb8-33"><a href="#cb8-33" tabindex="-1"></a><span class="co">#&gt; [[2]]$data</span></span>
+<span id="cb8-34"><a href="#cb8-34" tabindex="-1"></a><span class="co">#&gt;   1  2      3      4      5      6      7      8      9      10     11     12</span></span>
+<span id="cb8-35"><a href="#cb8-35" tabindex="-1"></a><span class="co">#&gt; A NA NA     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA</span></span>
+<span id="cb8-36"><a href="#cb8-36" tabindex="-1"></a><span class="co">#&gt; B NA &quot;Med1&quot; &quot;Med1&quot; &quot;Med2&quot; &quot;Med2&quot; &quot;Med2&quot; &quot;Med3&quot; NA     NA     NA     &quot;Med1&quot; NA</span></span>
+<span id="cb8-37"><a href="#cb8-37" tabindex="-1"></a><span class="co">#&gt; C NA &quot;Med2&quot; &quot;Med3&quot; &quot;Med1&quot; &quot;Med1&quot; &quot;Med2&quot; &quot;Med2&quot; &quot;Med2&quot; &quot;Med3&quot; NA     NA     NA</span></span>
+<span id="cb8-38"><a href="#cb8-38" tabindex="-1"></a><span class="co">#&gt; D NA NA     &quot;Med1&quot; &quot;Med2&quot; &quot;Med3&quot; &quot;Med1&quot; &quot;Med1&quot; &quot;Med2&quot; &quot;Med2&quot; &quot;Med2&quot; &quot;Med3&quot; NA</span></span>
+<span id="cb8-39"><a href="#cb8-39" tabindex="-1"></a><span class="co">#&gt; E NA NA     NA     NA     &quot;Med1&quot; &quot;Med2&quot; &quot;Med3&quot; &quot;Med1&quot; &quot;Med1&quot; &quot;Med2&quot; &quot;Med2&quot; NA</span></span>
+<span id="cb8-40"><a href="#cb8-40" tabindex="-1"></a><span class="co">#&gt; F NA &quot;Med2&quot; &quot;Med3&quot; NA     NA     NA     &quot;Med1&quot; &quot;Med2&quot; &quot;Med3&quot; &quot;Med1&quot; &quot;Med1&quot; NA</span></span>
+<span id="cb8-41"><a href="#cb8-41" tabindex="-1"></a><span class="co">#&gt; G NA &quot;Med2&quot; &quot;Med2&quot; &quot;Med2&quot; &quot;Med3&quot; NA     NA     NA     &quot;Med1&quot; &quot;Med2&quot; &quot;Med3&quot; NA</span></span>
+<span id="cb8-42"><a href="#cb8-42" tabindex="-1"></a><span class="co">#&gt; H NA NA     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA</span></span>
+<span id="cb8-43"><a href="#cb8-43" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb8-44"><a href="#cb8-44" tabindex="-1"></a><span class="co">#&gt; [[2]]$metadata</span></span>
+<span id="cb8-45"><a href="#cb8-45" tabindex="-1"></a><span class="co">#&gt; block_name </span></span>
+<span id="cb8-46"><a href="#cb8-46" tabindex="-1"></a><span class="co">#&gt;    &quot;Media&quot;</span></span></code></pre></div>
+<p>There is also an optional helper function called
+<code>make_designpattern</code>, or <code>mdp</code> for short.
+<code>make_designpattern</code> just reminds us what arguments are
+necessary for each design. For example:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>my_design_blk <span class="ot">&lt;-</span> <span class="fu">make_design</span>(</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>  <span class="at">output_format =</span> <span class="st">&quot;blocks&quot;</span>,</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  <span class="at">nrows =</span> <span class="dv">8</span>, <span class="at">ncols =</span> <span class="dv">12</span>, <span class="at">lookup_tbl_start =</span> <span class="st">&quot;a&quot;</span>,</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>  <span class="at">Bacteria =</span> <span class="fu">mdp</span>(</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;Str1&quot;</span>, <span class="st">&quot;Str2&quot;</span>, <span class="st">&quot;Str3&quot;</span>, </span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>               <span class="st">&quot;Str4&quot;</span>, <span class="st">&quot;Str5&quot;</span>, <span class="st">&quot;Str6&quot;</span>),</span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>    <span class="at">rows =</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">7</span>, <span class="at">cols =</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">11</span>, <span class="at">pattern =</span> <span class="st">&quot;abc0ef&quot;</span>,</span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>    <span class="at">byrow =</span> <span class="cn">FALSE</span>),</span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>  <span class="at">Media =</span> <span class="fu">mdp</span>(</span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;Med1&quot;</span>, <span class="st">&quot;Med2&quot;</span>, <span class="st">&quot;Med3&quot;</span>,</span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>               <span class="st">&quot;Med4&quot;</span>, <span class="st">&quot;Med5&quot;</span>, <span class="st">&quot;Med6&quot;</span>,</span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a>               <span class="st">&quot;Med7&quot;</span>, <span class="st">&quot;Med8&quot;</span>, <span class="st">&quot;Med9&quot;</span>,</span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a>               <span class="st">&quot;Med10&quot;</span>, <span class="st">&quot;Med11&quot;</span>, <span class="st">&quot;Med12&quot;</span>),</span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a>    <span class="at">rows =</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">7</span>, <span class="at">cols =</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">11</span>, <span class="at">pattern =</span> <span class="st">&quot;abcde0ghij&quot;</span>))</span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a></span>
+<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>my_design_blk</span>
+<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a><span class="co">#&gt; [[1]]</span></span>
+<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a><span class="co">#&gt; [[1]]$data</span></span>
+<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a><span class="co">#&gt;   1  2      3      4      5      6      7      8      9      10     11     12</span></span>
+<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a><span class="co">#&gt; A NA NA     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA</span></span>
+<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a><span class="co">#&gt; B NA &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; &quot;Str1&quot; NA</span></span>
+<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a><span class="co">#&gt; C NA &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; &quot;Str2&quot; NA</span></span>
+<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a><span class="co">#&gt; D NA &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; &quot;Str3&quot; NA</span></span>
+<span id="cb9-24"><a href="#cb9-24" tabindex="-1"></a><span class="co">#&gt; E NA NA     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA</span></span>
+<span id="cb9-25"><a href="#cb9-25" tabindex="-1"></a><span class="co">#&gt; F NA &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; &quot;Str5&quot; NA</span></span>
+<span id="cb9-26"><a href="#cb9-26" tabindex="-1"></a><span class="co">#&gt; G NA &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; &quot;Str6&quot; NA</span></span>
+<span id="cb9-27"><a href="#cb9-27" tabindex="-1"></a><span class="co">#&gt; H NA NA     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA</span></span>
+<span id="cb9-28"><a href="#cb9-28" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb9-29"><a href="#cb9-29" tabindex="-1"></a><span class="co">#&gt; [[1]]$metadata</span></span>
+<span id="cb9-30"><a href="#cb9-30" tabindex="-1"></a><span class="co">#&gt; block_name </span></span>
+<span id="cb9-31"><a href="#cb9-31" tabindex="-1"></a><span class="co">#&gt; &quot;Bacteria&quot; </span></span>
+<span id="cb9-32"><a href="#cb9-32" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb9-33"><a href="#cb9-33" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb9-34"><a href="#cb9-34" tabindex="-1"></a><span class="co">#&gt; [[2]]</span></span>
+<span id="cb9-35"><a href="#cb9-35" tabindex="-1"></a><span class="co">#&gt; [[2]]$data</span></span>
+<span id="cb9-36"><a href="#cb9-36" tabindex="-1"></a><span class="co">#&gt;   1  2      3      4      5      6      7  8      9      10     11      12</span></span>
+<span id="cb9-37"><a href="#cb9-37" tabindex="-1"></a><span class="co">#&gt; A NA NA     NA     NA     NA     NA     NA NA     NA     NA     NA      NA</span></span>
+<span id="cb9-38"><a href="#cb9-38" tabindex="-1"></a><span class="co">#&gt; B NA &quot;Med1&quot; &quot;Med2&quot; &quot;Med3&quot; &quot;Med4&quot; &quot;Med5&quot; NA &quot;Med7&quot; &quot;Med8&quot; &quot;Med9&quot; &quot;Med10&quot; NA</span></span>
+<span id="cb9-39"><a href="#cb9-39" tabindex="-1"></a><span class="co">#&gt; C NA &quot;Med1&quot; &quot;Med2&quot; &quot;Med3&quot; &quot;Med4&quot; &quot;Med5&quot; NA &quot;Med7&quot; &quot;Med8&quot; &quot;Med9&quot; &quot;Med10&quot; NA</span></span>
+<span id="cb9-40"><a href="#cb9-40" tabindex="-1"></a><span class="co">#&gt; D NA &quot;Med1&quot; &quot;Med2&quot; &quot;Med3&quot; &quot;Med4&quot; &quot;Med5&quot; NA &quot;Med7&quot; &quot;Med8&quot; &quot;Med9&quot; &quot;Med10&quot; NA</span></span>
+<span id="cb9-41"><a href="#cb9-41" tabindex="-1"></a><span class="co">#&gt; E NA &quot;Med1&quot; &quot;Med2&quot; &quot;Med3&quot; &quot;Med4&quot; &quot;Med5&quot; NA &quot;Med7&quot; &quot;Med8&quot; &quot;Med9&quot; &quot;Med10&quot; NA</span></span>
+<span id="cb9-42"><a href="#cb9-42" tabindex="-1"></a><span class="co">#&gt; F NA &quot;Med1&quot; &quot;Med2&quot; &quot;Med3&quot; &quot;Med4&quot; &quot;Med5&quot; NA &quot;Med7&quot; &quot;Med8&quot; &quot;Med9&quot; &quot;Med10&quot; NA</span></span>
+<span id="cb9-43"><a href="#cb9-43" tabindex="-1"></a><span class="co">#&gt; G NA &quot;Med1&quot; &quot;Med2&quot; &quot;Med3&quot; &quot;Med4&quot; &quot;Med5&quot; NA &quot;Med7&quot; &quot;Med8&quot; &quot;Med9&quot; &quot;Med10&quot; NA</span></span>
+<span id="cb9-44"><a href="#cb9-44" tabindex="-1"></a><span class="co">#&gt; H NA NA     NA     NA     NA     NA     NA NA     NA     NA     NA      NA</span></span>
+<span id="cb9-45"><a href="#cb9-45" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb9-46"><a href="#cb9-46" tabindex="-1"></a><span class="co">#&gt; [[2]]$metadata</span></span>
+<span id="cb9-47"><a href="#cb9-47" tabindex="-1"></a><span class="co">#&gt; block_name </span></span>
+<span id="cb9-48"><a href="#cb9-48" tabindex="-1"></a><span class="co">#&gt;    &quot;Media&quot;</span></span></code></pre></div>
+<p><strong>For merging our designs with plate reader data, we need it
+tidy-shaped</strong>, so we just need to change the
+<code>output_format</code> to <code>tidy</code>.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>my_design_tdy <span class="ot">&lt;-</span> <span class="fu">make_design</span>(</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>  <span class="at">output_format =</span> <span class="st">&quot;tidy&quot;</span>,</span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>  <span class="at">nrows =</span> <span class="dv">8</span>, <span class="at">ncols =</span> <span class="dv">12</span>, <span class="at">lookup_tbl_start =</span> <span class="st">&quot;a&quot;</span>,</span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>  <span class="at">Bacteria =</span> <span class="fu">mdp</span>(</span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;Str1&quot;</span>, <span class="st">&quot;Str2&quot;</span>, <span class="st">&quot;Str3&quot;</span>, </span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a>               <span class="st">&quot;Str4&quot;</span>, <span class="st">&quot;Str5&quot;</span>, <span class="st">&quot;Str6&quot;</span>),</span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>    <span class="at">rows =</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">7</span>, <span class="at">cols =</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">11</span>, <span class="at">pattern =</span> <span class="st">&quot;abc0ef&quot;</span>,</span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a>    <span class="at">byrow =</span> <span class="cn">FALSE</span>),</span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a>  <span class="at">Media =</span> <span class="fu">mdp</span>(</span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;Med1&quot;</span>, <span class="st">&quot;Med2&quot;</span>, <span class="st">&quot;Med3&quot;</span>,</span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a>               <span class="st">&quot;Med4&quot;</span>, <span class="st">&quot;Med5&quot;</span>, <span class="st">&quot;Med6&quot;</span>,</span>
+<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a>               <span class="st">&quot;Med7&quot;</span>, <span class="st">&quot;Med8&quot;</span>, <span class="st">&quot;Med9&quot;</span>,</span>
+<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a>               <span class="st">&quot;Med10&quot;</span>, <span class="st">&quot;Med11&quot;</span>, <span class="st">&quot;Med12&quot;</span>),</span>
+<span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a>    <span class="at">rows =</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">7</span>, <span class="at">cols =</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">11</span>, <span class="at">pattern =</span> <span class="st">&quot;abcde0ghij&quot;</span>))</span>
+<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a></span>
+<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a><span class="fu">head</span>(my_design_tdy, <span class="dv">20</span>)</span>
+<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a><span class="co">#&gt;    Well Bacteria Media</span></span>
+<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a><span class="co">#&gt; 1    A1     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a><span class="co">#&gt; 2    A2     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-20"><a href="#cb10-20" tabindex="-1"></a><span class="co">#&gt; 3    A3     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-21"><a href="#cb10-21" tabindex="-1"></a><span class="co">#&gt; 4    A4     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-22"><a href="#cb10-22" tabindex="-1"></a><span class="co">#&gt; 5    A5     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-23"><a href="#cb10-23" tabindex="-1"></a><span class="co">#&gt; 6    A6     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-24"><a href="#cb10-24" tabindex="-1"></a><span class="co">#&gt; 7    A7     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-25"><a href="#cb10-25" tabindex="-1"></a><span class="co">#&gt; 8    A8     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-26"><a href="#cb10-26" tabindex="-1"></a><span class="co">#&gt; 9    A9     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-27"><a href="#cb10-27" tabindex="-1"></a><span class="co">#&gt; 10  A10     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-28"><a href="#cb10-28" tabindex="-1"></a><span class="co">#&gt; 11  A11     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-29"><a href="#cb10-29" tabindex="-1"></a><span class="co">#&gt; 12  A12     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-30"><a href="#cb10-30" tabindex="-1"></a><span class="co">#&gt; 13   B1     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-31"><a href="#cb10-31" tabindex="-1"></a><span class="co">#&gt; 14   B2     Str1  Med1</span></span>
+<span id="cb10-32"><a href="#cb10-32" tabindex="-1"></a><span class="co">#&gt; 15   B3     Str1  Med2</span></span>
+<span id="cb10-33"><a href="#cb10-33" tabindex="-1"></a><span class="co">#&gt; 16   B4     Str1  Med3</span></span>
+<span id="cb10-34"><a href="#cb10-34" tabindex="-1"></a><span class="co">#&gt; 17   B5     Str1  Med4</span></span>
+<span id="cb10-35"><a href="#cb10-35" tabindex="-1"></a><span class="co">#&gt; 18   B6     Str1  Med5</span></span>
+<span id="cb10-36"><a href="#cb10-36" tabindex="-1"></a><span class="co">#&gt; 19   B7     Str1  &lt;NA&gt;</span></span>
+<span id="cb10-37"><a href="#cb10-37" tabindex="-1"></a><span class="co">#&gt; 20   B8     Str1  Med7</span></span></code></pre></div>
+</div>
+<div id="saving-designs-to-files" class="section level2">
+<h2>Saving designs to files</h2>
+<p>If you’d like to save the designs you’ve created with
+<code>make_design</code> to files, you just need to decide if you’d like
+them tidy-shaped or block-shaped. Both formats can easily be read back
+into <code>R</code> by <code>gcplyr</code>.</p>
+<div id="saving-tidy-shaped-designs" class="section level3">
+<h3>Saving tidy-shaped designs</h3>
+<p>These design files will be less human-readable, but easier to import
+and merge. Additionally, tidy-shaped files are often better for data
+repositories, like Dryad. To save tidy-shaped designs, simply use the
+built-in <code>write.csv</code> function.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="co">#See the previous section where we created my_design_tdy</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="fu">write.csv</span>(<span class="at">x =</span> my_design_tdy, <span class="at">file =</span> <span class="st">&quot;tidy_design.csv&quot;</span>,</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>          <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+</div>
+<div id="saving-block-shaped-designs" class="section level3">
+<h3>Saving block-shaped designs</h3>
+<p>These design files will be more human-readable but slightly more
+computationally involved to import and merge. For these, use the
+<code>gcplyr</code> function <code>write_blocks</code>. Typically,
+you’ll use <code>write_blocks</code> to save files in one of two
+formats:</p>
+<ul>
+<li><code>multiple</code> - each block will be saved to its own
+<code>.csv</code> file</li>
+<li><code>single</code> - all the blocks will be saved to a single
+<code>.csv</code> file, with an empty row in between them</li>
+</ul>
+<div id="saving-block-shaped-designs-to-multiple-files" class="section level4">
+<h4>Saving block-shaped designs to multiple files</h4>
+<p>The default setting for <code>write_blocks</code> is
+<code>output_format = &#39;multiple&#39;</code>. This creates one
+<code>csv</code> file for each block. If we set
+<code>file = NULL</code>, the default is to name the files according to
+the <code>block_names</code> in the metadata.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="co"># See the previous section where we created my_design_blk</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="fu">write_blocks</span>(my_design_blk, <span class="at">file =</span> <span class="cn">NULL</span>)</span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a><span class="co"># Let&#39;s see what the files look like</span></span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a><span class="fu">print_df</span>(<span class="fu">read.csv</span>(<span class="st">&quot;Bacteria.csv&quot;</span>, <span class="at">header =</span> <span class="cn">FALSE</span>, <span class="at">colClasses =</span> <span class="st">&quot;character&quot;</span>))</span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a><span class="co">#&gt;   1    2    3    4    5    6    7    8    9   10   11 12</span></span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a><span class="co">#&gt; A                                                       </span></span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a><span class="co">#&gt; B   Str1 Str1 Str1 Str1 Str1 Str1 Str1 Str1 Str1 Str1   </span></span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a><span class="co">#&gt; C   Str2 Str2 Str2 Str2 Str2 Str2 Str2 Str2 Str2 Str2   </span></span>
+<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a><span class="co">#&gt; D   Str3 Str3 Str3 Str3 Str3 Str3 Str3 Str3 Str3 Str3   </span></span>
+<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a><span class="co">#&gt; E                                                       </span></span>
+<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a><span class="co">#&gt; F   Str5 Str5 Str5 Str5 Str5 Str5 Str5 Str5 Str5 Str5   </span></span>
+<span id="cb12-13"><a href="#cb12-13" tabindex="-1"></a><span class="co">#&gt; G   Str6 Str6 Str6 Str6 Str6 Str6 Str6 Str6 Str6 Str6   </span></span>
+<span id="cb12-14"><a href="#cb12-14" tabindex="-1"></a><span class="co">#&gt; H</span></span>
+<span id="cb12-15"><a href="#cb12-15" tabindex="-1"></a></span>
+<span id="cb12-16"><a href="#cb12-16" tabindex="-1"></a><span class="fu">print_df</span>(<span class="fu">read.csv</span>(<span class="st">&quot;Media.csv&quot;</span>, <span class="at">header =</span> <span class="cn">FALSE</span>, <span class="at">colClasses =</span> <span class="st">&quot;character&quot;</span>))</span>
+<span id="cb12-17"><a href="#cb12-17" tabindex="-1"></a><span class="co">#&gt;   1    2    3    4    5    6 7    8    9   10    11 12</span></span>
+<span id="cb12-18"><a href="#cb12-18" tabindex="-1"></a><span class="co">#&gt; A                                                     </span></span>
+<span id="cb12-19"><a href="#cb12-19" tabindex="-1"></a><span class="co">#&gt; B   Med1 Med2 Med3 Med4 Med5   Med7 Med8 Med9 Med10   </span></span>
+<span id="cb12-20"><a href="#cb12-20" tabindex="-1"></a><span class="co">#&gt; C   Med1 Med2 Med3 Med4 Med5   Med7 Med8 Med9 Med10   </span></span>
+<span id="cb12-21"><a href="#cb12-21" tabindex="-1"></a><span class="co">#&gt; D   Med1 Med2 Med3 Med4 Med5   Med7 Med8 Med9 Med10   </span></span>
+<span id="cb12-22"><a href="#cb12-22" tabindex="-1"></a><span class="co">#&gt; E   Med1 Med2 Med3 Med4 Med5   Med7 Med8 Med9 Med10   </span></span>
+<span id="cb12-23"><a href="#cb12-23" tabindex="-1"></a><span class="co">#&gt; F   Med1 Med2 Med3 Med4 Med5   Med7 Med8 Med9 Med10   </span></span>
+<span id="cb12-24"><a href="#cb12-24" tabindex="-1"></a><span class="co">#&gt; G   Med1 Med2 Med3 Med4 Med5   Med7 Med8 Med9 Med10   </span></span>
+<span id="cb12-25"><a href="#cb12-25" tabindex="-1"></a><span class="co">#&gt; H</span></span></code></pre></div>
+</div>
+<div id="saving-block-shaped-designs-to-a-single-file" class="section level4">
+<h4>Saving block-shaped designs to a single file</h4>
+<p>The other setting for <code>write_blocks</code> is
+<code>output_format = &#39;single&#39;</code>. This creates a single
+<code>csv</code> file that contains all the blocks, putting metadata
+like <code>block_names</code> in rows that precede each block.</p>
+<p>Let’s take a look what the <code>single</code> output format looks
+like:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="co"># See the previous section where we created my_design_blk</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="fu">write_blocks</span>(my_design_blk, <span class="at">file =</span> <span class="st">&quot;Design.csv&quot;</span>, <span class="at">output_format =</span> <span class="st">&quot;single&quot;</span>)</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a></span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a><span class="co"># Let&#39;s see what the file looks like</span></span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="fu">print_df</span>(<span class="fu">read.csv</span>(<span class="st">&quot;Design.csv&quot;</span>, <span class="at">header =</span> <span class="cn">FALSE</span>, <span class="at">colClasses =</span> <span class="st">&quot;character&quot;</span>))</span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="co">#&gt; block_name Bacteria                                                      </span></span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co">#&gt;                   1    2    3    4    5    6    7    8    9   10    11 12</span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co">#&gt;          A                                                               </span></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="co">#&gt;          B          Str1 Str1 Str1 Str1 Str1 Str1 Str1 Str1 Str1  Str1   </span></span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co">#&gt;          C          Str2 Str2 Str2 Str2 Str2 Str2 Str2 Str2 Str2  Str2   </span></span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a><span class="co">#&gt;          D          Str3 Str3 Str3 Str3 Str3 Str3 Str3 Str3 Str3  Str3   </span></span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a><span class="co">#&gt;          E                                                               </span></span>
+<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a><span class="co">#&gt;          F          Str5 Str5 Str5 Str5 Str5 Str5 Str5 Str5 Str5  Str5   </span></span>
+<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a><span class="co">#&gt;          G          Str6 Str6 Str6 Str6 Str6 Str6 Str6 Str6 Str6  Str6   </span></span>
+<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a><span class="co">#&gt;          H                                                               </span></span>
+<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a><span class="co">#&gt;                                                                          </span></span>
+<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a><span class="co">#&gt; block_name    Media                                                      </span></span>
+<span id="cb13-18"><a href="#cb13-18" tabindex="-1"></a><span class="co">#&gt;                   1    2    3    4    5    6    7    8    9   10    11 12</span></span>
+<span id="cb13-19"><a href="#cb13-19" tabindex="-1"></a><span class="co">#&gt;          A                                                               </span></span>
+<span id="cb13-20"><a href="#cb13-20" tabindex="-1"></a><span class="co">#&gt;          B          Med1 Med2 Med3 Med4 Med5      Med7 Med8 Med9 Med10   </span></span>
+<span id="cb13-21"><a href="#cb13-21" tabindex="-1"></a><span class="co">#&gt;          C          Med1 Med2 Med3 Med4 Med5      Med7 Med8 Med9 Med10   </span></span>
+<span id="cb13-22"><a href="#cb13-22" tabindex="-1"></a><span class="co">#&gt;          D          Med1 Med2 Med3 Med4 Med5      Med7 Med8 Med9 Med10   </span></span>
+<span id="cb13-23"><a href="#cb13-23" tabindex="-1"></a><span class="co">#&gt;          E          Med1 Med2 Med3 Med4 Med5      Med7 Med8 Med9 Med10   </span></span>
+<span id="cb13-24"><a href="#cb13-24" tabindex="-1"></a><span class="co">#&gt;          F          Med1 Med2 Med3 Med4 Med5      Med7 Med8 Med9 Med10   </span></span>
+<span id="cb13-25"><a href="#cb13-25" tabindex="-1"></a><span class="co">#&gt;          G          Med1 Med2 Med3 Med4 Med5      Med7 Med8 Med9 Med10   </span></span>
+<span id="cb13-26"><a href="#cb13-26" tabindex="-1"></a><span class="co">#&gt;          H</span></span></code></pre></div>
+<p>Here we can see all our design information has been saved to a single
+file, and the metadata has been added in rows before each block.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="merging-growth-curve-data-with-designs" class="section level1">
+<h1>Merging growth curve data with designs</h1>
+<p>Once we have both our design and data in <code>R</code> and
+tidy-shaped, we can merge them just the same way as described in
+<code>vignette(&quot;gc03_incorporate_designs&quot;)</code></p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

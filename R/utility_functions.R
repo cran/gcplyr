@@ -232,7 +232,7 @@ infer_block_metadata <- function(blocks) {
 #'         as a separator without issue (or error if none can be found)
 #' 
 #' @noRd
-sep_finder <- function(blocks, nested_metadata = NULL) {
+find_char_for_sep <- function(blocks, nested_metadata = NULL) {
   if (is.null(nested_metadata)) {
     nested_metadata <- infer_block_metadata(blocks)
   }
@@ -436,6 +436,10 @@ reorder_xy <- function(x = NULL, y) {
 #' @param y Vector of y values
 #' @param window_width Width of the window (in units of \code{x}).
 #' @param window_width_n Width of the window (in number of \code{y} values).
+#' @param window_width_frac Width of the window (as a fraction of the total
+#'                          range of \code{x}).
+#' @param window_width_n_frac Width of the window (as a fraction of the total
+#'                          number of \code{y} values).
 #' @param window_height The maximum change in \code{y} within each window.
 #' @param edge_NA logical for whether windows that pass the edge of the data
 #'                should be returned as NA or simply truncated at the edge
@@ -459,16 +463,41 @@ reorder_xy <- function(x = NULL, y) {
 #'         of the data in the window centered at that point
 #'      
 #' @noRd   
-get_windows <- function(x, y, window_width_n = NULL, window_width = NULL, 
-                        window_height = NULL, edge_NA, 
-                        force_height_multi_n = FALSE) {
+get_windows <- function(x, y, window_width = NULL, window_width_n = NULL, 
+                        window_width_frac = NULL, window_width_n_frac = NULL,
+                        window_height = NULL, 
+                        edge_NA, force_height_multi_n = FALSE) {
   if(any(c(is.na(x), is.na(y)))) {
     stop("NA's must be removed before getting windows")}
   if(!all(order(x) == 1:length(x))) {
     stop("data must be ordered before getting windows")}
   
+  #Check window_width_n
+  if(!is.null(window_width_n) && window_width_n %% 2 == 0) {
+    stop("window_width_n must be an odd number")}
+  
   window_starts <- matrix(data = 1, nrow = length(x), ncol = 3)
   window_ends <- matrix(data = length(x), nrow = length(x), ncol = 3)
+  
+  #Convert window_width_frac into window_width
+  # (using the smaller of the two if both are specified)
+  if(!is.null(window_width_frac)) {
+    calc_width <- window_width_frac * (max(x) - min(x))
+    if(!is.null(window_width)) {
+      window_width <- min(calc_width, window_width)
+    } else {window_width <- calc_width}
+  }
+  
+  #Convert window_width_n_frac into window_width_n 
+  # (using the smaller of the two if both are specified)
+  if(!is.null(window_width_n_frac)) {
+    calc_width_n <- max(1,
+                        round(window_width_n_frac * length(y)) -
+                          (1 - round(window_width_n_frac * length(y))%%2))
+    if(!is.null(window_width_n)) {
+      window_width_n <- min(calc_width_n, window_width_n)
+    } else {window_width_n <- calc_width_n}
+  }
   
   if(!is.null(window_width_n)) {
     candidate_window_edges <- 
@@ -660,10 +689,14 @@ solve_linear <- function(x1, y1, x2 = NULL, y2 = NULL, x3 = NULL, y3 = NULL,
   if(!is.null(x2) & !is.null(y2)) {
     m <- (y2-y1)/(x2-x1)
     if(!is.null(x3)) { #return y3
-      out <- m * (x3-x1) + y1
+      out <- ifelse(x3 == x1, y1,
+                    ifelse(x3 == x2, y2,
+                           m * (x3-x1) + y1))
       if(named == TRUE) {names(out) <- rep("y3", length(out))}
     } else if (!is.null(y3)) { #return x3
-      out <- x1 + (y3-y1)/m
+      out <- ifelse(y3 == y1, x1,
+                    ifelse(y3 == y2, x2,
+                           x1 + (y3-y1)/m))
       if(named == TRUE) {names(out) <- rep("x3", length(out))}
     } else { #return m
       out <- m
@@ -855,4 +888,47 @@ take_subset <- function(x = NULL, y = NULL, subset = NULL) {
     } else {indices <- NULL}
     return(list(x = x, y = y, indices = indices))
   }
+}
+
+#' Parse formula and data into x and y
+#' 
+#' This function parses a specified formula and data into a vector
+#' of x data and a vector of y data
+#' 
+#' @param formula Formula specifying the numeric response and numeric predictor.
+#' @param data Dataframe containing variables in \code{formula}
+#' 
+#' @return List containing: vector of \code{x}, vector of \code{y},
+#'                          predictor variable name, response variable name
+#' 
+#' @noRd
+parse_formula_data <- function(formula, data) {
+  #Check formula formatting
+  if (length(formula) < 3) {stop("No response variable specified")}
+  if (length(formula[[3]]) > 1) {stop("Multiple predictors in formula")}
+  
+  #Parse formula
+  response_var <- as.character(formula[[2]])
+  predictor_var <- as.character(formula[[3]])
+  
+  #Check for vars in data
+  stopifnot(response_var %in% colnames(data),
+            predictor_var %in% colnames(data))
+  
+  x <- data[, predictor_var]
+  y <- data[, response_var]
+  
+  return(list(x = x, y = y, predictor = predictor_var, response = response_var))
+}
+
+#' Change NA values to NULL
+#' 
+#' @param x Input
+#' 
+#' @return \code{x}, or \code{NULL} if \code{x == NA}
+#' 
+#' @noRd
+NA_to_NULL <- function(x) {
+  if(!is.null(x) && length(x) == 1 && is.na(x)) {return(NULL)
+  } else {return(x)}
 }

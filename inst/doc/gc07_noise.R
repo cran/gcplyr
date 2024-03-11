@@ -214,6 +214,33 @@ ggplot(data = dplyr::filter(ex_dat_mrg_wide, noise == "Yes"),
   theme_bw()
 
 ## -----------------------------------------------------------------------------
+ex_dat_mrg_fortraining <- make_example(vignette = 7, example = 2)
+
+training_results <- 
+  reframe(group_by(ex_dat_mrg_fortraining, Bacteria_strain, Phage, Well),
+          train_smooth_data(x = Time, y = Measurements, 
+                   sm_method = "moving-average",
+                   tuneLength = 5))
+head(training_results)
+
+## -----------------------------------------------------------------------------
+ggplot(data = training_results,
+       aes(x = window_width_n, y = RMSE)) +
+  geom_point()
+
+## -----------------------------------------------------------------------------
+training_results <- 
+  reframe(group_by(ex_dat_mrg_fortraining, Bacteria_strain, Phage, Well),
+          train_smooth_data(x = Time, y = Measurements, 
+                   sm_method = "moving-average",
+                   tuneGrid = list(
+                     "window_width_n" = c(1, 3, 5, 9, 13))))
+
+ggplot(data = training_results,
+       aes(x = window_width_n, y = RMSE)) +
+  geom_point()
+
+## -----------------------------------------------------------------------------
 # Note here that we're calculating derivatives of the smoothed column generated
 #  in the previous section by combining moving median and moving average smoothing
 ex_dat_mrg <- 

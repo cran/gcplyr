@@ -14,8 +14,14 @@ calc_deriv(
   subset_by = NULL,
   window_width = NULL,
   window_width_n = NULL,
+  window_width_frac = NULL,
+  window_width_n_frac = NULL,
   trans_y = "linear",
-  na.rm = TRUE
+  na.rm = TRUE,
+  warn_ungrouped = TRUE,
+  warn_logtransform_warnings = TRUE,
+  warn_logtransform_infinite = TRUE,
+  warn_window_toosmall = TRUE
 )
 }
 \arguments{
@@ -51,29 +57,32 @@ independently of the others.
 This provides an internally-implemented approach similar
 to \code{dplyr::group_by} and \code{dplyr::mutate}}
 
-\item{window_width_n, window_width}{Set how many data points are used to determine
+\item{window_width, window_width_n, window_width_frac, window_width_n_frac}{Set how many data points are used to determine
 the slope at each point.
      
-When both are \code{NULL}, \code{calc_deriv} 
+When all are \code{NULL}, \code{calc_deriv} 
 calculates the difference or derivative
 of each point with the next point, appending
 \code{NA} at the end.
      
-When one or both are specified, a linear regression 
+When one or multiple are specified, a linear regression 
 is fit to all points in the window to determine the 
 slope.
      
 \code{window_width_n} specifies the width of the
 window in number of data points. \code{window_width}
 specifies the width of the window in units of \code{x}.
+\code{window_width_n_frac} specifies the width of the
+window as a fraction of the total number of data points.
      
-When using \code{window_width} and \code{window_width_n} 
-at the same time, windows are conservative. Points 
-included in each window will meet both the 
-\code{window_width} and the \code{window_width_n}.
+When using multiple window specifications at the same 
+time, windows are conservative. Points 
+included in each window will meet all of the 
+\code{window_width}, \code{window_width_n}, and
+\code{window_width_n_frac}.
 
 A value of \code{window_width_n = 3} or 
-\code{window_width_n = 5} is often the most effective.}
+\code{window_width_n = 5} is often a good default.}
 
 \item{trans_y}{One of \code{c("linear", "log")} specifying the
                 transformation of y-values.
@@ -91,6 +100,23 @@ A value of \code{window_width_n = 3} or
                 more sensitive to incorrect values of \code{blank}.}
 
 \item{na.rm}{logical whether NA's should be removed before analyzing}
+
+\item{warn_ungrouped}{logical whether warning should be issued when
+\code{smooth_data} is being called on ungrouped data
+and \code{subset_by = NULL}.}
+
+\item{warn_logtransform_warnings}{logical whether warning should be issued 
+when log(y) produced warnings.}
+
+\item{warn_logtransform_infinite}{logical whether warning should be issued 
+when log(y) produced infinite values that will
+be treated as \code{NA}.}
+
+\item{warn_window_toosmall}{logical whether warning should be issued 
+when only one data point is in the window
+set by \code{window_width_n}, 
+\code{window_width}, or \code{window_width_n_frac},
+and so \code{NA} will be returned.}
 }
 \value{
 A vector of values for the plain (if \code{percapita = FALSE})

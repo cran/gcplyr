@@ -47,7 +47,7 @@ head(ex_dat_mrg)
 # First, we'll reorder the Well levels so they plot in the correct order
 ex_dat_mrg$Well <- 
   factor(ex_dat_mrg$Well,
-         levels = paste(rep(LETTERS[1:8], each = 12), 1:12, sep = ""))
+         levels = paste0(rep(LETTERS[1:8], each = 12), 1:12))
 
 ggplot(data = ex_dat_mrg, aes(x = Time, y = Measurements)) +
   geom_line() +

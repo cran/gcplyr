@@ -36,7 +36,7 @@ ggplot(data = dplyr::filter(ex_dat_mrg, Well %in% sample_wells),
   geom_line() +
   facet_wrap(~Well, scales = "free")
 
-## ---- include = FALSE---------------------------------------------------------
+## ----include = FALSE----------------------------------------------------------
 # For computational speed, let's just keep the wells we'll be focusing on
 #  (this is hidden from readers bc from this point on we never print out
 #  the df anyway so there's no difference in the output by filtering here)

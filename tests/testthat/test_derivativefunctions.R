@@ -57,6 +57,18 @@ test_that("calc_deriv on regular data, fitting", {
     expected = c(NA, rep(1, length(dat$x)-2), NA))
 })
 
+test_that("calc_deriv on regular data, window too small", {
+  library(dplyr)
+  
+  dat <- data.frame(x = c(1,2,3, 3.5, 4, 4.5, 5, 6, 7, 8), 
+                    y = c(1:10)**2, grp = rep("A", 10))
+  expect_warning(
+    out <- mutate(group_by(dat, grp),
+           deriv = calc_deriv(x = x, y = y, window_width = 1.5))$deriv,
+    regexp = "window only contains one data point, returning NA")
+  expect_equal(out, c(NA, NA, 14, 16, 20, 24, 26, NA, NA, NA))
+})
+
 test_that("calc_deriv with x_scale", {
   library(dplyr)
   

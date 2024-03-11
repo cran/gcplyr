@@ -13,7 +13,7 @@
 <meta name="author" content="Mike Blazanin" />
 
 
-<title>Statistics, merging other data, and other resources</title>
+<title>Best practices and other tips</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -337,8 +337,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 
-<h1 class="title toc-ignore">Statistics, merging other data, and other
-resources</h1>
+<h1 class="title toc-ignore">Best practices and other tips</h1>
 <h4 class="author">Mike Blazanin</h4>
 
 
@@ -375,10 +374,12 @@ analysis packages</a></li>
 <li>Processing your data: <code>vignette(&quot;gc05_process&quot;)</code></li>
 <li>Analyzing your data: <code>vignette(&quot;gc06_analyze&quot;)</code></li>
 <li>Dealing with noise: <code>vignette(&quot;gc07_noise&quot;)</code></li>
-<li><strong>Statistics, merging other data, and other
-resources:</strong> <code>vignette(&quot;gc08_conclusion&quot;)</code></li>
+<li><strong>Best practices and other tips:</strong>
+<code>vignette(&quot;gc08_conclusion&quot;)</code></li>
 <li>Working with multiple plates:
 <code>vignette(&quot;gc09_multiple_plates&quot;)</code></li>
+<li>Using make_design to generate experimental designs:
+<code>vignette(&quot;gc10_using_make_design&quot;)</code></li>
 </ol>
 <p>So far, we’ve imported and transformed our measures, combined them
 with our design information, pre-processed, processed, plotted, and
@@ -390,27 +391,6 @@ other data, and additional resources for analyzing growth curves.</p>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
 <span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span></code></pre></div>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># This code was previously explained</span></span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co"># Here we&#39;re re-running it so it&#39;s available for us to work with</span></span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>example_tidydata <span class="ot">&lt;-</span> <span class="fu">trans_wide_to_tidy</span>(example_widedata_noiseless,</span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>                                       <span class="at">id_cols =</span> <span class="st">&quot;Time&quot;</span>)</span>
-<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">merge_dfs</span>(example_tidydata, example_design_tidy)</span>
-<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co">#&gt; Joining, by = &quot;Well&quot;</span></span>
-<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>ex_dat_mrg<span class="sc">$</span>Well <span class="ot">&lt;-</span> </span>
-<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>  <span class="fu">factor</span>(ex_dat_mrg<span class="sc">$</span>Well,</span>
-<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>         <span class="at">levels =</span> <span class="fu">paste</span>(<span class="fu">rep</span>(LETTERS[<span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>], <span class="at">each =</span> <span class="dv">12</span>), <span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>, <span class="at">sep =</span> <span class="st">&quot;&quot;</span>))</span>
-<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">group_by</span>(ex_dat_mrg, Well, Bacteria_strain, Phage)</span>
-<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a></span>
-<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span></span>
-<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a>  <span class="fu">mutate</span>(ex_dat_mrg,</span>
-<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a>         <span class="at">smoothed_med3 =</span> </span>
-<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a>           <span class="fu">smooth_data</span>(<span class="at">x =</span> Time, <span class="at">y =</span> Measurements,</span>
-<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a>                       <span class="at">sm_method =</span> <span class="st">&quot;moving-median&quot;</span>, <span class="at">window_width_n =</span> <span class="dv">3</span>),</span>
-<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a>         <span class="co"># Note that for the second round, we&#39;re using the </span></span>
-<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a>         <span class="co"># first smoothing as the input y</span></span>
-<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a>         <span class="at">smoothed =</span> </span>
-<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a>           <span class="fu">smooth_data</span>(<span class="at">x =</span> Time, <span class="at">y =</span> smoothed_med3,</span>
-<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a>                       <span class="at">sm_method =</span> <span class="st">&quot;moving-average&quot;</span>, <span class="at">window_width_n =</span> <span class="dv">3</span>))</span></code></pre></div>
 </div>
 <div id="statistical-analyses-of-growth-curves-data" class="section level1">
 <h1>Statistical analyses of growth curves data</h1>
@@ -419,74 +399,68 @@ metrics. How can we best go about drawing statistical conclusions from
 these data?</p>
 <div id="when-should-we-average-replicates" class="section level2">
 <h2>When should we average replicates?</h2>
-<p>Before we dig into what we to do next, I want to emphasize something
-we did <em>not</em> do in this workflow: averaging different wells
-together <em>before</em> summarization. In my opinion, averaging should
-only occur after summarization, not before. Why? Even wells that have
-the same contents (i.e. are technical replicates) can still differ in
-their growth due to biological variation (e.g. stochastic growth
-dynamics). If we average our density values at the beginning, we may
-introduce bias and we will not have the ability to visualize or assess
-the biological variation present in our data.</p>
+<p>I want to emphasize something we did <em>not</em> do in our workflow:
+averaging different wells together <em>before</em> summarization. In my
+opinion, averaging should only occur after summarization, not before.
+Why? Even wells that have the same contents (i.e. are technical
+replicates) can still differ in their growth due to biological variation
+(e.g. stochastic growth dynamics). If we average our density values at
+the beginning, we may introduce bias, and we will not have the ability
+to visualize or assess the biological variation present in our data.</p>
 <p>Let’s look at a simple example to demonstrate this point. I’m going
-to simulate bacterial growth using the Baranyi-Roberts mathematical
-model of growth, which is logistic growth but with a period of
-acclimation at the beginning:</p>
-<p><span class="math display">\[\frac{dN}{dt} = \frac{q_{0}}{q_{0} +
-e^{-mt}} * r N\left(1-\frac{N}{k}\right)\]</span></p>
+to simulate bacterial growth using logistic growth, which starts after a
+finite ‘lag period’ where the bacteria don’t grow at all.</p>
+<p><span class="math display">\[\begin{equation}
+dN/dt =
+\begin{cases}
+  0 &amp; t &lt; lag \\
+  r N\left(1-\frac{N}{k}\right) &amp; t \ge lag
+\end{cases}
+\end{equation}\]</span></p>
 <p>Where <span class="math inline">\(N\)</span> is the population size,
-<span class="math inline">\(q_{0}\)</span> is a parameter controlling
-the initial acclimatization state of the population, <span class="math inline">\(m\)</span> is the rate of acclimation, <span class="math inline">\(r\)</span> is the rate of growth, and <span class="math inline">\(k\)</span> is the carrying capacity of the
-population.</p>
+<span class="math inline">\(r\)</span> is the rate of growth, <span class="math inline">\(k\)</span> is the carrying capacity of the
+population, and <span class="math inline">\(lag\)</span> is the lag
+time.</p>
 <p>In the code below, I’ve simulated the growth of 96 different wells of
-bacteria. All the bacteria are identical, except that they differ in the
-rate at which they acclimate.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>sim_dat_tdy <span class="ot">&lt;-</span> <span class="fu">make_example</span>(<span class="at">vignette =</span> <span class="dv">8</span>, <span class="at">example =</span> <span class="dv">1</span>)</span></code></pre></div>
+bacteria. All the bacteria grow at exactly the same rate, except they
+differ in their lag time (how long they wait before starting to
+grow).</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>sim_dat_tdy <span class="ot">&lt;-</span> <span class="fu">make_example</span>(<span class="at">vignette =</span> <span class="dv">8</span>, <span class="at">example =</span> <span class="dv">1</span>)</span></code></pre></div>
 <p>Now, let’s calculate the growth rate of each well and plot the
 growth:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>sim_dat_tdy <span class="ot">&lt;-</span> <span class="fu">mutate</span>(<span class="fu">group_by</span>(sim_dat_tdy, Well),</span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>                      <span class="at">percap_deriv =</span> <span class="fu">calc_deriv</span>(<span class="at">y =</span> Measurements, <span class="at">x =</span> time,</span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>                                                <span class="at">percapita =</span> <span class="cn">TRUE</span>, <span class="at">blank =</span> <span class="dv">0</span>))</span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a></span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co"># Plot the growth in our wells</span></span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> <span class="fu">filter</span>(sim_dat_tdy, Well <span class="sc">!=</span> <span class="st">&quot;averaged&quot;</span>), </span>
-<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> time, <span class="at">y =</span> Measurements, <span class="at">group =</span> Well)) <span class="sc">+</span></span>
-<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">alpha =</span> <span class="fl">0.1</span>) <span class="sc">+</span></span>
-<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">data =</span> <span class="fu">filter</span>(sim_dat_tdy, Well <span class="sc">==</span> <span class="st">&quot;averaged&quot;</span>), <span class="at">color =</span> <span class="st">&quot;red&quot;</span>) <span class="sc">+</span></span>
-<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">trans =</span> <span class="st">&quot;log10&quot;</span>)</span></code></pre></div>
-<p><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>sim_dat_tdy <span class="ot">&lt;-</span> <span class="fu">mutate</span>(<span class="fu">group_by</span>(sim_dat_tdy, Well),</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>                      <span class="at">percap_deriv =</span> <span class="fu">calc_deriv</span>(<span class="at">y =</span> Measurements, <span class="at">x =</span> time,</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>                                                <span class="at">percapita =</span> <span class="cn">TRUE</span>, <span class="at">blank =</span> <span class="dv">0</span>))</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a><span class="co"># Plot the growth in our wells</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> <span class="fu">filter</span>(sim_dat_tdy, Well <span class="sc">!=</span> <span class="st">&quot;averaged&quot;</span>), </span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> time, <span class="at">y =</span> Measurements, <span class="at">group =</span> Well)) <span class="sc">+</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">alpha =</span> <span class="fl">0.1</span>) <span class="sc">+</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">data =</span> <span class="fu">filter</span>(sim_dat_tdy, Well <span class="sc">==</span> <span class="st">&quot;averaged&quot;</span>), <span class="at">color =</span> <span class="st">&quot;red&quot;</span>) <span class="sc">+</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">trans =</span> <span class="st">&quot;log10&quot;</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
 <p>Here we’ve plotted each individual well in black, with the “average
 well” plotted in red. We can clearly see that our different wells are
-varying in how quickly they’re acclimating. Our average well appears to
-reflect the data pretty well, does it give a good measure for our
-average maximum per-capita growth rate?</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co"># Summarize our data</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>sim_dat_sum <span class="ot">&lt;-</span> <span class="fu">summarize</span>(<span class="fu">group_by</span>(sim_dat_tdy, Well),</span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>                         <span class="at">max_growth_rate =</span> <span class="fu">max</span>(percap_deriv, <span class="at">na.rm =</span> <span class="cn">TRUE</span>))</span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a></span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co"># Plot the maximum per-capita growth rates of each well</span></span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co">#  Add a red line for the max growth rate of the &quot;average well&quot;</span></span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co">#  Add a dashed line for the average growth rate of all the wells</span></span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> <span class="fu">filter</span>(sim_dat_sum, Well <span class="sc">!=</span> <span class="st">&quot;averaged&quot;</span>), </span>
-<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> max_growth_rate)) <span class="sc">+</span></span>
-<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>  <span class="fu">geom_histogram</span>() <span class="sc">+</span></span>
-<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">data =</span> <span class="fu">filter</span>(sim_dat_sum, Well <span class="sc">==</span> <span class="st">&quot;averaged&quot;</span>), </span>
-<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>             <span class="fu">aes</span>(<span class="at">xintercept =</span> max_growth_rate), <span class="at">color =</span> <span class="st">&quot;red&quot;</span>) <span class="sc">+</span></span>
-<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> </span>
-<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>               <span class="fu">mean</span>(<span class="fu">filter</span>(sim_dat_sum, Well <span class="sc">!=</span> <span class="st">&quot;averaged&quot;</span>)<span class="sc">$</span>max_growth_rate),</span>
-<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>             <span class="at">lty =</span> <span class="dv">2</span>)</span>
-<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a><span class="co">#&gt; `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</span></span></code></pre></div>
-<p><img src="data:image/png;base64,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" /><!-- --></p>
-<p>Here we can see that the maximum growth rate of the “average well”
-(red line) is not the same as the true average maximum growth rate of
-all the wells (dashed line). While this bias might seem small, it is in
-fact very consistent: if you ran this simulation many more times, the
-“average well” growth rate would nearly always be lower than the true
-average growth rate. Moreover, this bias extends to many other
-statistics as well.</p>
-<p>Thus, I recommend against averaging wells together before
-summarizing, since it often introduces bias and eliminates our ability
-to visualize variation between replicates.</p>
+varying in how long their lag time is, but not their growth rate once
+they start. In contrast, our average well has a quite different shape.
+Does that affect its maximum growth rate?</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co"># Summarize our data</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>sim_dat_sum <span class="ot">&lt;-</span> <span class="fu">summarize</span>(<span class="fu">group_by</span>(sim_dat_tdy, Well),</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>                         <span class="at">max_growth_rate =</span> <span class="fu">max</span>(percap_deriv, <span class="at">na.rm =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="co"># Plot the maximum per-capita growth rates of each well</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co">#  as well as the &#39;average&#39; well</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> sim_dat_sum, </span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> Well <span class="sc">==</span> <span class="st">&quot;averaged&quot;</span>, <span class="at">y =</span> max_growth_rate)) <span class="sc">+</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>, <span class="at">position =</span> <span class="fu">position_jitter</span>(<span class="at">width =</span> <span class="fl">0.1</span>)) <span class="sc">+</span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>  <span class="fu">ylim</span>(<span class="fl">0.01</span>, <span class="fl">0.03</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>Here we can see that the maximum growth rate of the “average well” is
+far from the maximum growth rate of each well.</p>
+<p>Moreover, this bias can show up in other summary metrics as well. An
+‘average curve’ is rarely a good representative of the average of all
+curves, so I recommend against averaging wells together before
+summarizing.</p>
 </div>
 <div id="carrying-out-statistical-testing" class="section level2">
 <h2>Carrying out statistical testing</h2>
@@ -536,15 +510,26 @@ data frames together, this can be achieved with
 <code>merge_dfs</code>.</p>
 <p>We’ll focus on the area-under-the-curve metric, and on just the
 bacteria grown in the absence of phages.</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>ex_dat_mrg_sum <span class="ot">&lt;-</span></span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  <span class="fu">summarize</span>(dplyr<span class="sc">::</span><span class="fu">filter</span>(ex_dat_mrg, Phage <span class="sc">==</span> <span class="st">&quot;No Phage&quot;</span>), </span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>            <span class="at">auc =</span> <span class="fu">auc</span>(<span class="at">x =</span> Time, <span class="at">y =</span> smoothed))</span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co">#&gt; `summarise()` has grouped output by &#39;Well&#39;, &#39;Bacteria_strain&#39;. You can override</span></span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co">#&gt; using the `.groups` argument.</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co"># This code was previously explained</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co"># Here we&#39;re re-running it so it&#39;s available for us to work with</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>example_tidydata <span class="ot">&lt;-</span> <span class="fu">trans_wide_to_tidy</span>(example_widedata_noiseless,</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>                                       <span class="at">id_cols =</span> <span class="st">&quot;Time&quot;</span>)</span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>ex_dat_mrg <span class="ot">&lt;-</span> <span class="fu">merge_dfs</span>(example_tidydata, example_design_tidy)</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co">#&gt; Joining with `by = join_by(Well)`</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>ex_dat_mrg_sum <span class="ot">&lt;-</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="fu">group_by</span>(dplyr<span class="sc">::</span><span class="fu">filter</span>(ex_dat_mrg, Phage <span class="sc">==</span> <span class="st">&quot;No Phage&quot;</span>),</span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>                     Well, Bacteria_strain, Phage),</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>            <span class="at">auc =</span> <span class="fu">auc</span>(<span class="at">x =</span> Time, <span class="at">y =</span> Measurements))</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co">#&gt; `summarise()` has grouped output by &#39;Well&#39;, &#39;Bacteria_strain&#39;. You can override</span></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a><span class="co">#&gt; using the `.groups` argument.</span></span></code></pre></div>
 <p>Imagine that, separately, we’ve measured the resistance of each of
 our example bacteria to antibiotics, and we want to know if there’s any
 relationship between the antibiotic resistance of the bacteria and their
-growth. Here we’ll generate some mock antibiotic resistance data.
+growth. <code>make_example</code> has some mock antibiotic resistance
+data we can use. Importantly, the antibiotic data must have matching
+headers to our growth curve data so that <code>merge_dfs</code> knows
+how to merge them.</p>
+<p>Here we’ll generate some mock antibiotic resistance data.
 Importantly, our data must have matching headers as our growth curve
 data so that <code>merge_dfs</code> knows how to merge the
 <code>data.frame</code>’s. We’ll put whether or not the strain is
@@ -552,44 +537,38 @@ resistant to the antibiotic under the <code>Antibiotic_resis</code>
 column, with a TRUE for resistance, and FALSE for sensitivity.
 <strong>Don’t worry exactly how this code works</strong>, since it’s
 just simulating data that you would have collected in the lab.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>antibiotic_dat <span class="ot">&lt;-</span> </span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  <span class="fu">data.frame</span>(<span class="at">Bacteria_strain =</span> <span class="fu">paste</span>(<span class="st">&quot;Strain&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>),</span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>             <span class="at">Antibiotic_resis =</span> </span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>               ex_dat_mrg_sum<span class="sc">$</span>auc[</span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>                 <span class="fu">match</span>(<span class="fu">paste</span>(<span class="st">&quot;Strain&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">48</span>), </span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>                       ex_dat_mrg_sum<span class="sc">$</span>Bacteria_strain)] <span class="sc">*</span> </span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>               <span class="fu">runif</span>(<span class="dv">48</span>, <span class="fl">0.5</span>, <span class="fl">1.5</span>) <span class="sc">&lt;</span> <span class="fu">mean</span>(ex_dat_mrg_sum<span class="sc">$</span>auc))</span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a></span>
-<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="fu">head</span>(antibiotic_dat)</span>
-<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co">#&gt;   Bacteria_strain Antibiotic_resis</span></span>
-<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="co">#&gt; 1        Strain 1             TRUE</span></span>
-<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a><span class="co">#&gt; 2        Strain 2            FALSE</span></span>
-<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="co">#&gt; 3        Strain 3             TRUE</span></span>
-<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a><span class="co">#&gt; 4        Strain 4            FALSE</span></span>
-<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a><span class="co">#&gt; 5        Strain 5            FALSE</span></span>
-<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a><span class="co">#&gt; 6        Strain 6             TRUE</span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>antibiotic_dat <span class="ot">&lt;-</span> <span class="fu">make_example</span>(<span class="at">vignette =</span> <span class="dv">8</span>, <span class="at">example =</span> <span class="dv">2</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="co">#&gt; Joining with `by = join_by(Well)`</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="fu">head</span>(antibiotic_dat)</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co">#&gt;   Bacteria_strain Antibiotic_resis</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co">#&gt; 1        Strain 1             TRUE</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co">#&gt; 2        Strain 2            FALSE</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="co">#&gt; 3        Strain 3             TRUE</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="co">#&gt; 4        Strain 4            FALSE</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="co">#&gt; 5        Strain 5            FALSE</span></span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="co">#&gt; 6        Strain 6             TRUE</span></span></code></pre></div>
 <p>Great, now we merge our two data frames and see if there’s a
 relationship.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>growth_and_antibiotics <span class="ot">&lt;-</span> </span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  <span class="fu">merge_dfs</span>(ex_dat_mrg_sum, antibiotic_dat)</span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="co">#&gt; Joining, by = &quot;Bacteria_strain&quot;</span></span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="fu">head</span>(growth_and_antibiotics)</span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="co">#&gt; # A tibble: 6 × 5</span></span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co">#&gt; # Groups:   Well, Bacteria_strain [6]</span></span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co">#&gt;   Well  Bacteria_strain Phage       auc Antibiotic_resis</span></span>
-<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co">#&gt;   &lt;fct&gt; &lt;chr&gt;           &lt;chr&gt;     &lt;dbl&gt; &lt;lgl&gt;           </span></span>
-<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="co">#&gt; 1 A1    Strain 1        No Phage 55172. TRUE            </span></span>
-<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="co">#&gt; 2 A2    Strain 2        No Phage 67181. FALSE           </span></span>
-<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="co">#&gt; 3 A3    Strain 3        No Phage 52392  TRUE            </span></span>
-<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="co">#&gt; 4 A4    Strain 4        No Phage 70101. FALSE           </span></span>
-<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a><span class="co">#&gt; 5 A5    Strain 5        No Phage 70932. FALSE           </span></span>
-<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a><span class="co">#&gt; 6 A6    Strain 6        No Phage 44079. TRUE</span></span>
-<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a></span>
-<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> growth_and_antibiotics, </span>
-<span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> Antibiotic_resis, <span class="at">y =</span> auc)) <span class="sc">+</span></span>
-<span id="cb8-18"><a href="#cb8-18" tabindex="-1"></a>  <span class="fu">geom_point</span>()</span></code></pre></div>
-<p><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>growth_and_antibiotics <span class="ot">&lt;-</span> </span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  <span class="fu">merge_dfs</span>(ex_dat_mrg_sum, antibiotic_dat)</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="co">#&gt; Joining with `by = join_by(Bacteria_strain)`</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="fu">head</span>(growth_and_antibiotics)</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co">#&gt; # A tibble: 6 × 5</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co">#&gt; # Groups:   Well, Bacteria_strain [6]</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co">#&gt;   Well  Bacteria_strain Phage       auc Antibiotic_resis</span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt; &lt;chr&gt;           &lt;chr&gt;     &lt;dbl&gt; &lt;lgl&gt;           </span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co">#&gt; 1 A1    Strain 1        No Phage 57291. TRUE            </span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="co">#&gt; 2 A2    Strain 2        No Phage 69361. FALSE           </span></span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co">#&gt; 3 A3    Strain 3        No Phage 54460. TRUE            </span></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="co">#&gt; 4 A4    Strain 4        No Phage 72280. FALSE           </span></span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a><span class="co">#&gt; 5 A5    Strain 5        No Phage 73112. FALSE           </span></span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="co">#&gt; 6 A6    Strain 6        No Phage 45970. TRUE</span></span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a></span>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> growth_and_antibiotics, </span>
+<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> Antibiotic_resis, <span class="at">y =</span> auc)) <span class="sc">+</span></span>
+<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a>  <span class="fu">geom_point</span>()</span></code></pre></div>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASAAAAEgCAMAAAAjXV6yAAAAzFBMVEUAAAAAADoAAGYAOpAAZrYzMzM6AAA6ADo6AGY6kNtNTU1NTW5NTY5NbqtNjshmAABmADpmZmZmtv9uTU1uTW5uTY5ubo5ubqtuq+SOTU2OTW6OTY6Obk2ObquOjo6OyP+QOgCQkDqQkGaQtpCQ2/+rbk2rbm6rbo6rjk2ryKur5Mir5OSr5P+2ZgC225C22/+2///Ijk3I///bkDrb/9vb///kq27k5Kvk///r6+v/tmb/yI7/25D/27b/5Kv//7b//8j//9v//+T///+r9itvAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAH/UlEQVR4nO2dC3/aNhTF3YSxQF4b6ZbH1sHW0O4BWwhLlgKDgL//d6ok25C0WMfYvtiyz/mlGIOvHn+kK1n2rT2fssorugBlFwEBERAQAQEREBABAVkAzS/aJ/e+/3zdPn2K2QT6lFoZTKUzwICebwb+4+nTqt/1H8/8rZt6A5pfPvnPP92rP3/+w/ZNvQGFLchwuhls3aijvlGKTaIKsvigwM9MTw2LrZvwwCJ+YPEMMKD524E/PbkHLajGgMJWQh8EWtCqfxWMW1s29QbkT9vt4wHnQfGAEquI8ieT53lpTWsByPPSEyoFoAw/cNL0nQaUpfziGRAQEAEB1QKQ66MYW5Bg+cUzICAgAgIqAyDxiaLrTponq4LlF8+gFIDEu5jjgOQnigSEVA5AaWUASeeQOYkcipH2R+I8KEEFUtsmTN9tQFxyhaVIb5pIrs+kOQ+yqzbDfNoyEBAQAQEREBABAREQEC/74OLzXEyq/OIZlAEQT1ZxKdKbJpLjPoiL9kg8WbXL8XnQY1urK3iXq+OAtKai0T7uA9LRBoJ32rsPSDcSwWgf+cs+OchWQINAMNrH+RakMaAWVGtAoyvdjOiD4rT6oJuIYLSP64DCPsR5UGalLQMBAREQEAEh8WxervziGRAQsiQgYFkGQPRBdnEUA+KVVVx8XjiUKr94BgQEVAtA9EFQbo9inAcJll88gzwBVVpsQXGWtQDk+CjGO8wEyy+eAQEB1QIQfRAURzGxDAgIWRIQsCQgYFkGQHTSdnE9CIiAgAgIiT5IrvziGRAQsiQgYIkBrfr8P+2tgEZd4WgfxwHpu+l90TvtHV+Tnl/+rruYy8/2ySOcyALooqvpuPxsH9klV1vTceTZPrKAnt85/2wf4UX7keliLj/bRxiQmus4/oxD1y/7OD7MVwEQz8XkMiAgZFkLQPRBduU+ii17LfWvQUCfYgANG4bSroTS18AxQIvzjt5MDu4qAihvH1Q9QHmPYmONZnHe2o1PjQD5E91pd+VTJ0DpVET5xTMgIGS5BdDi3IyLHp30J1sLWnx3yxZk7WKTwwcCsgLatYuVV9mv+mwDNKxMC8r/VMOk+KYyPohr0kAEhJT3gtmsWbF5UM6Alr3WstcJz+mrAEhiPWjYqtA8SALQuFGh9SCJJVdFZ1yZFpS7k9aL9sMKzYN42QeI8yAgAgIiICT6ILkMCAhZEhCwJCBgSUDAEgPSD/c5uXf5Llf5aB/f3x7mw2gfP3pqhNvRPrLhUNfm6VkuR/vkIUswy9uBbkUuR/vsYRQbdV2O9tkLIPqgOOlutPp473K0j/w8iFHPnEnHWhIQsCQgYElAwJKAgCUBActaAOKivV287ANEQEAEBERAQAQEREBABAREQEBlAVReyQSz7Kz0PzHPxcTKL54BASFLAgKWBAQsCQhYEhCwJCBgSUDAkoCAJQEBy1oA4lUNu8pyNp++BgSESpHeNIkICIk+SC4DAkKWBAQskwDSIRm8idOix3aXwSwWPvMff+4ymMXSwT781Wcwi+1G8ivdkxjMEifz0BHYgmoMSEdktttX9EEW6RbEYBYAiPOg7Cqi/OIZEBCyJCBgSUDAkoCAJQEBSwIClgQELAkIWBIQsCQgYElAwJKAgCUBAUsCApYEBCwJCFjmCKi8YrSPXbw/CIiAgAgIiICACAiJ9yjKZUBAyJKAgCUBAUsCApYEBCwJCFjWAhDnQXZxJg1EQEAEhEQfJJdBAkBT8+Qa3uUaJ32jeFyYD6N9NpB4p71NqpUw2ide84vjAaN9rPjimg6jfSLx0TX2R9eoVpIg2ie9xN1X9gzyeHRNerkNaA8iICACcl8EBERAQAQEREBAewQ0vzCB+H5wkhJNxPXjXE/uwy+PByANu1Z9E+t/+p9J7CSa7avX9MnvE1B0bjL95Wq993zdVVPS06fNiUsOmQSJrVPVgFInXwCg1Yc/3z1Fe2ajT3/zB7Tm4hqg+eXTqBvtrfrBKQtbUOiDzvT/KuNPz150OOMbAieR/fwuABQl9oUPSpP8/luQ8aQnr37T+dv8u9j0ePBVX0uj/QPSi236GdLB3tQsmqx388nEvDyqUSxY1FM5ugToUQ1bisvLUUzESa/6iv3ozDeLVw4BWn3Ur883fxivcGbmQWsf1O7mkknYsy7UbGIUTL3SJ8+ZNBABAREQEAEBERAQAQEVDmjstV7u/v+PP/v2Vv2ZvWi7+SZRmkmPS6KiAS173x/cbXbDqm2pYZ6V3kVFA5oc/N3sbHYJ6EsND//tNXT13zc9rzNTLy3TxX7zvMMHQ2XZ87yGH30T7q41O/rVO7jTH+qGqI/yOsYsfJtZBQNanLf8sararKlwqDemagqQ2l0qcOqt3oRvo93F+abis2bDN9/748MH08pmzU7kxWbN7IQKBjQxcDpBVcJ6GUDrXX2EPiz65oueZo40xyhss6PAnenjju625be7CgY0DH//4AffADoKa6wAqab14pvJweuKG8OxuSFaDYfDoPvpD4evemJ6FQtocW5qFrSPDID0MesUw9SCt5mLWCygsalB4DVeAdrsTt7cWruY3jfHRAq4Rm8zF7FQQMa5mk1ERFdpu5MOv4l2IxnDZU81IUXJNK8XriuPqUGhgKJRZvzmfQhIuY5GNMw3/BfDvB9+89UwbxjoD01L88xWfxi+zayi50GlFwEBOQrIzJNz6kR2OQpofyIgIAICIiAgAgIiICACAvoMynnLxmxPpAUAAAAASUVORK5CYII=" /><!-- --></p>
 <p>There is! We can see that the antibiotic resistant strains
 (<code>TRUE</code>) have a smaller area-under-the-curve than the
 antibiotic sensitive strains (<code>FALSE</code>) (although, to be fair,
@@ -677,10 +656,12 @@ at once, check out our final vignette:
 <li>Processing your data: <code>vignette(&quot;gc05_process&quot;)</code></li>
 <li>Analyzing your data: <code>vignette(&quot;gc06_analyze&quot;)</code></li>
 <li>Dealing with noise: <code>vignette(&quot;gc07_noise&quot;)</code></li>
-<li>Statistics, merging other data, and other resources:
+<li>Best practices and other tips:
 <code>vignette(&quot;gc08_conclusion&quot;)</code></li>
 <li><strong>Working with multiple plates:
 <code>vignette(&quot;gc09_multiple_plates&quot;)</code></strong></li>
+<li>Using make_design to generate experimental designs:
+<code>vignette(&quot;gc10_using_make_design&quot;)</code></li>
 </ol>
 </div>
 
