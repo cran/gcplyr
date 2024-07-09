@@ -199,6 +199,20 @@ ggplot(data = dplyr::filter(ex_dat_mrg, Well %in% sample_wells),
              aes(xintercept = infl_point), lty = 2, color = "blue")
 
 ## -----------------------------------------------------------------------------
+ex_dat_mrg_sum <-
+  summarize(group_by(ex_dat_mrg, Bacteria_strain, Phage, Well),
+            centr_x = centroid_x(x = Time, y = Measurements),
+            centr_y = centroid_y(x = Time, y = Measurements))
+head(ex_dat_mrg_sum)
+
+ggplot(data = dplyr::filter(ex_dat_mrg, Well %in% sample_wells),
+       aes(x = Time, y = Measurements)) +
+  geom_line() +
+  facet_wrap(~Well) +
+  geom_point(data = dplyr::filter(ex_dat_mrg_sum, Well %in% sample_wells), 
+             aes(x = centr_x, y = centr_y))
+
+## -----------------------------------------------------------------------------
 nophage_wells <- c("A1", "A4", "E2", "F1")
 ggplot(data = dplyr::filter(ex_dat_mrg, Well %in% nophage_wells),
        aes(x = Time, y = Measurements)) +

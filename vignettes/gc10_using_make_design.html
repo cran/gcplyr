@@ -876,29 +876,30 @@ tidy-shaped</strong>, so we just need to change the
 <span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a>               <span class="st">&quot;Med7&quot;</span>, <span class="st">&quot;Med8&quot;</span>, <span class="st">&quot;Med9&quot;</span>,</span>
 <span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a>               <span class="st">&quot;Med10&quot;</span>, <span class="st">&quot;Med11&quot;</span>, <span class="st">&quot;Med12&quot;</span>),</span>
 <span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a>    <span class="at">rows =</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">7</span>, <span class="at">cols =</span> <span class="dv">2</span><span class="sc">:</span><span class="dv">11</span>, <span class="at">pattern =</span> <span class="st">&quot;abcde0ghij&quot;</span>))</span>
-<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a></span>
-<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a><span class="fu">head</span>(my_design_tdy, <span class="dv">20</span>)</span>
-<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a><span class="co">#&gt;    Well Bacteria Media</span></span>
-<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a><span class="co">#&gt; 1    A1     &lt;NA&gt;  &lt;NA&gt;</span></span>
-<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a><span class="co">#&gt; 2    A2     &lt;NA&gt;  &lt;NA&gt;</span></span>
-<span id="cb10-20"><a href="#cb10-20" tabindex="-1"></a><span class="co">#&gt; 3    A3     &lt;NA&gt;  &lt;NA&gt;</span></span>
-<span id="cb10-21"><a href="#cb10-21" tabindex="-1"></a><span class="co">#&gt; 4    A4     &lt;NA&gt;  &lt;NA&gt;</span></span>
-<span id="cb10-22"><a href="#cb10-22" tabindex="-1"></a><span class="co">#&gt; 5    A5     &lt;NA&gt;  &lt;NA&gt;</span></span>
-<span id="cb10-23"><a href="#cb10-23" tabindex="-1"></a><span class="co">#&gt; 6    A6     &lt;NA&gt;  &lt;NA&gt;</span></span>
-<span id="cb10-24"><a href="#cb10-24" tabindex="-1"></a><span class="co">#&gt; 7    A7     &lt;NA&gt;  &lt;NA&gt;</span></span>
-<span id="cb10-25"><a href="#cb10-25" tabindex="-1"></a><span class="co">#&gt; 8    A8     &lt;NA&gt;  &lt;NA&gt;</span></span>
-<span id="cb10-26"><a href="#cb10-26" tabindex="-1"></a><span class="co">#&gt; 9    A9     &lt;NA&gt;  &lt;NA&gt;</span></span>
-<span id="cb10-27"><a href="#cb10-27" tabindex="-1"></a><span class="co">#&gt; 10  A10     &lt;NA&gt;  &lt;NA&gt;</span></span>
-<span id="cb10-28"><a href="#cb10-28" tabindex="-1"></a><span class="co">#&gt; 11  A11     &lt;NA&gt;  &lt;NA&gt;</span></span>
-<span id="cb10-29"><a href="#cb10-29" tabindex="-1"></a><span class="co">#&gt; 12  A12     &lt;NA&gt;  &lt;NA&gt;</span></span>
-<span id="cb10-30"><a href="#cb10-30" tabindex="-1"></a><span class="co">#&gt; 13   B1     &lt;NA&gt;  &lt;NA&gt;</span></span>
-<span id="cb10-31"><a href="#cb10-31" tabindex="-1"></a><span class="co">#&gt; 14   B2     Str1  Med1</span></span>
-<span id="cb10-32"><a href="#cb10-32" tabindex="-1"></a><span class="co">#&gt; 15   B3     Str1  Med2</span></span>
-<span id="cb10-33"><a href="#cb10-33" tabindex="-1"></a><span class="co">#&gt; 16   B4     Str1  Med3</span></span>
-<span id="cb10-34"><a href="#cb10-34" tabindex="-1"></a><span class="co">#&gt; 17   B5     Str1  Med4</span></span>
-<span id="cb10-35"><a href="#cb10-35" tabindex="-1"></a><span class="co">#&gt; 18   B6     Str1  Med5</span></span>
-<span id="cb10-36"><a href="#cb10-36" tabindex="-1"></a><span class="co">#&gt; 19   B7     Str1  &lt;NA&gt;</span></span>
-<span id="cb10-37"><a href="#cb10-37" tabindex="-1"></a><span class="co">#&gt; 20   B8     Str1  Med7</span></span></code></pre></div>
+<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a><span class="co">#&gt; Inferred &#39;into&#39; column names as: Bacteria, Media</span></span>
+<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a></span>
+<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a><span class="fu">head</span>(my_design_tdy, <span class="dv">20</span>)</span>
+<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a><span class="co">#&gt;    Well Bacteria Media</span></span>
+<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a><span class="co">#&gt; 1    A1     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-20"><a href="#cb10-20" tabindex="-1"></a><span class="co">#&gt; 2    A2     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-21"><a href="#cb10-21" tabindex="-1"></a><span class="co">#&gt; 3    A3     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-22"><a href="#cb10-22" tabindex="-1"></a><span class="co">#&gt; 4    A4     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-23"><a href="#cb10-23" tabindex="-1"></a><span class="co">#&gt; 5    A5     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-24"><a href="#cb10-24" tabindex="-1"></a><span class="co">#&gt; 6    A6     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-25"><a href="#cb10-25" tabindex="-1"></a><span class="co">#&gt; 7    A7     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-26"><a href="#cb10-26" tabindex="-1"></a><span class="co">#&gt; 8    A8     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-27"><a href="#cb10-27" tabindex="-1"></a><span class="co">#&gt; 9    A9     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-28"><a href="#cb10-28" tabindex="-1"></a><span class="co">#&gt; 10  A10     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-29"><a href="#cb10-29" tabindex="-1"></a><span class="co">#&gt; 11  A11     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-30"><a href="#cb10-30" tabindex="-1"></a><span class="co">#&gt; 12  A12     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-31"><a href="#cb10-31" tabindex="-1"></a><span class="co">#&gt; 13   B1     &lt;NA&gt;  &lt;NA&gt;</span></span>
+<span id="cb10-32"><a href="#cb10-32" tabindex="-1"></a><span class="co">#&gt; 14   B2     Str1  Med1</span></span>
+<span id="cb10-33"><a href="#cb10-33" tabindex="-1"></a><span class="co">#&gt; 15   B3     Str1  Med2</span></span>
+<span id="cb10-34"><a href="#cb10-34" tabindex="-1"></a><span class="co">#&gt; 16   B4     Str1  Med3</span></span>
+<span id="cb10-35"><a href="#cb10-35" tabindex="-1"></a><span class="co">#&gt; 17   B5     Str1  Med4</span></span>
+<span id="cb10-36"><a href="#cb10-36" tabindex="-1"></a><span class="co">#&gt; 18   B6     Str1  Med5</span></span>
+<span id="cb10-37"><a href="#cb10-37" tabindex="-1"></a><span class="co">#&gt; 19   B7     Str1  &lt;NA&gt;</span></span>
+<span id="cb10-38"><a href="#cb10-38" tabindex="-1"></a><span class="co">#&gt; 20   B8     Str1  Med7</span></span></code></pre></div>
 </div>
 <div id="saving-designs-to-files" class="section level2">
 <h2>Saving designs to files</h2>

@@ -526,28 +526,29 @@ saving them to columns named <code>Treatment_numbers</code> and
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>my_design <span class="ot">&lt;-</span> </span>
 <span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  <span class="fu">import_blockdesigns</span>(<span class="at">files =</span> <span class="fu">c</span>(<span class="st">&quot;mydesign.csv&quot;</span>, <span class="st">&quot;mydesign2.csv&quot;</span>), </span>
 <span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>                      <span class="at">block_names =</span> <span class="fu">c</span>(<span class="st">&quot;Treatment_numbers&quot;</span>, <span class="st">&quot;Strain_letters&quot;</span>))</span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="fu">head</span>(my_design, <span class="dv">20</span>)</span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co">#&gt;    Well Treatment_numbers Strain_letters</span></span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co">#&gt; 1    A1               Tr1           StrA</span></span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co">#&gt; 2    A2               Tr1           StrA</span></span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co">#&gt; 3    A3               Tr1           StrA</span></span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co">#&gt; 4    A4               Tr1           StrA</span></span>
-<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="co">#&gt; 5    A5               Tr1           StrA</span></span>
-<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co">#&gt; 6    A6               Tr1           StrA</span></span>
-<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="co">#&gt; 7    A7               Tr2           StrA</span></span>
-<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a><span class="co">#&gt; 8    A8               Tr2           StrA</span></span>
-<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="co">#&gt; 9    A9               Tr2           StrA</span></span>
-<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a><span class="co">#&gt; 10  A10               Tr2           StrA</span></span>
-<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a><span class="co">#&gt; 11  A11               Tr2           StrA</span></span>
-<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a><span class="co">#&gt; 12  A12               Tr2           StrA</span></span>
-<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a><span class="co">#&gt; 13   B1               Tr1           StrA</span></span>
-<span id="cb7-19"><a href="#cb7-19" tabindex="-1"></a><span class="co">#&gt; 14   B2               Tr1           StrA</span></span>
-<span id="cb7-20"><a href="#cb7-20" tabindex="-1"></a><span class="co">#&gt; 15   B3               Tr1           StrA</span></span>
-<span id="cb7-21"><a href="#cb7-21" tabindex="-1"></a><span class="co">#&gt; 16   B4               Tr1           StrA</span></span>
-<span id="cb7-22"><a href="#cb7-22" tabindex="-1"></a><span class="co">#&gt; 17   B5               Tr1           StrA</span></span>
-<span id="cb7-23"><a href="#cb7-23" tabindex="-1"></a><span class="co">#&gt; 18   B6               Tr1           StrA</span></span>
-<span id="cb7-24"><a href="#cb7-24" tabindex="-1"></a><span class="co">#&gt; 19   B7               Tr2           StrA</span></span>
-<span id="cb7-25"><a href="#cb7-25" tabindex="-1"></a><span class="co">#&gt; 20   B8               Tr2           StrA</span></span></code></pre></div>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co">#&gt; Inferred &#39;into&#39; column names as: Treatment_numbers, Strain_letters</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="fu">head</span>(my_design, <span class="dv">20</span>)</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co">#&gt;    Well Treatment_numbers Strain_letters</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co">#&gt; 1    A1               Tr1           StrA</span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co">#&gt; 2    A2               Tr1           StrA</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co">#&gt; 3    A3               Tr1           StrA</span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="co">#&gt; 4    A4               Tr1           StrA</span></span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co">#&gt; 5    A5               Tr1           StrA</span></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="co">#&gt; 6    A6               Tr1           StrA</span></span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a><span class="co">#&gt; 7    A7               Tr2           StrA</span></span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="co">#&gt; 8    A8               Tr2           StrA</span></span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a><span class="co">#&gt; 9    A9               Tr2           StrA</span></span>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a><span class="co">#&gt; 10  A10               Tr2           StrA</span></span>
+<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a><span class="co">#&gt; 11  A11               Tr2           StrA</span></span>
+<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a><span class="co">#&gt; 12  A12               Tr2           StrA</span></span>
+<span id="cb7-19"><a href="#cb7-19" tabindex="-1"></a><span class="co">#&gt; 13   B1               Tr1           StrA</span></span>
+<span id="cb7-20"><a href="#cb7-20" tabindex="-1"></a><span class="co">#&gt; 14   B2               Tr1           StrA</span></span>
+<span id="cb7-21"><a href="#cb7-21" tabindex="-1"></a><span class="co">#&gt; 15   B3               Tr1           StrA</span></span>
+<span id="cb7-22"><a href="#cb7-22" tabindex="-1"></a><span class="co">#&gt; 16   B4               Tr1           StrA</span></span>
+<span id="cb7-23"><a href="#cb7-23" tabindex="-1"></a><span class="co">#&gt; 17   B5               Tr1           StrA</span></span>
+<span id="cb7-24"><a href="#cb7-24" tabindex="-1"></a><span class="co">#&gt; 18   B6               Tr1           StrA</span></span>
+<span id="cb7-25"><a href="#cb7-25" tabindex="-1"></a><span class="co">#&gt; 19   B7               Tr2           StrA</span></span>
+<span id="cb7-26"><a href="#cb7-26" tabindex="-1"></a><span class="co">#&gt; 20   B8               Tr2           StrA</span></span></code></pre></div>
 </div>
 <div id="importing-multiple-separated-block-shaped-designs-in-one-file" class="section level3">
 <h3>Importing multiple separated block-shaped designs in one file</h3>
@@ -584,28 +585,29 @@ simply specify the location of each block within the file:</p>
 <span id="cb8-29"><a href="#cb8-29" tabindex="-1"></a>  <span class="fu">import_blockdesigns</span>(<span class="at">files =</span> <span class="fu">c</span>(<span class="st">&quot;mydesign_sep.csv&quot;</span>), </span>
 <span id="cb8-30"><a href="#cb8-30" tabindex="-1"></a>                      <span class="at">block_names =</span> <span class="fu">c</span>(<span class="st">&quot;Treatment_numbers&quot;</span>, <span class="st">&quot;Strain_letters&quot;</span>),</span>
 <span id="cb8-31"><a href="#cb8-31" tabindex="-1"></a>                      <span class="at">startrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">11</span>), <span class="at">endrow =</span> <span class="fu">c</span>(<span class="dv">9</span>, <span class="dv">19</span>))</span>
-<span id="cb8-32"><a href="#cb8-32" tabindex="-1"></a><span class="fu">head</span>(my_design, <span class="dv">20</span>)</span>
-<span id="cb8-33"><a href="#cb8-33" tabindex="-1"></a><span class="co">#&gt;    Well Treatment_numbers Strain_letters</span></span>
-<span id="cb8-34"><a href="#cb8-34" tabindex="-1"></a><span class="co">#&gt; 1    A1               Tr1           StrA</span></span>
-<span id="cb8-35"><a href="#cb8-35" tabindex="-1"></a><span class="co">#&gt; 2    A2               Tr1           StrA</span></span>
-<span id="cb8-36"><a href="#cb8-36" tabindex="-1"></a><span class="co">#&gt; 3    A3               Tr1           StrA</span></span>
-<span id="cb8-37"><a href="#cb8-37" tabindex="-1"></a><span class="co">#&gt; 4    A4               Tr1           StrA</span></span>
-<span id="cb8-38"><a href="#cb8-38" tabindex="-1"></a><span class="co">#&gt; 5    A5               Tr1           StrA</span></span>
-<span id="cb8-39"><a href="#cb8-39" tabindex="-1"></a><span class="co">#&gt; 6    A6               Tr1           StrA</span></span>
-<span id="cb8-40"><a href="#cb8-40" tabindex="-1"></a><span class="co">#&gt; 7    A7               Tr2           StrA</span></span>
-<span id="cb8-41"><a href="#cb8-41" tabindex="-1"></a><span class="co">#&gt; 8    A8               Tr2           StrA</span></span>
-<span id="cb8-42"><a href="#cb8-42" tabindex="-1"></a><span class="co">#&gt; 9    A9               Tr2           StrA</span></span>
-<span id="cb8-43"><a href="#cb8-43" tabindex="-1"></a><span class="co">#&gt; 10  A10               Tr2           StrA</span></span>
-<span id="cb8-44"><a href="#cb8-44" tabindex="-1"></a><span class="co">#&gt; 11  A11               Tr2           StrA</span></span>
-<span id="cb8-45"><a href="#cb8-45" tabindex="-1"></a><span class="co">#&gt; 12  A12               Tr2           StrA</span></span>
-<span id="cb8-46"><a href="#cb8-46" tabindex="-1"></a><span class="co">#&gt; 13   B1               Tr1           StrA</span></span>
-<span id="cb8-47"><a href="#cb8-47" tabindex="-1"></a><span class="co">#&gt; 14   B2               Tr1           StrA</span></span>
-<span id="cb8-48"><a href="#cb8-48" tabindex="-1"></a><span class="co">#&gt; 15   B3               Tr1           StrA</span></span>
-<span id="cb8-49"><a href="#cb8-49" tabindex="-1"></a><span class="co">#&gt; 16   B4               Tr1           StrA</span></span>
-<span id="cb8-50"><a href="#cb8-50" tabindex="-1"></a><span class="co">#&gt; 17   B5               Tr1           StrA</span></span>
-<span id="cb8-51"><a href="#cb8-51" tabindex="-1"></a><span class="co">#&gt; 18   B6               Tr1           StrA</span></span>
-<span id="cb8-52"><a href="#cb8-52" tabindex="-1"></a><span class="co">#&gt; 19   B7               Tr2           StrA</span></span>
-<span id="cb8-53"><a href="#cb8-53" tabindex="-1"></a><span class="co">#&gt; 20   B8               Tr2           StrA</span></span></code></pre></div>
+<span id="cb8-32"><a href="#cb8-32" tabindex="-1"></a><span class="co">#&gt; Inferred &#39;into&#39; column names as: Treatment_numbers, Strain_letters</span></span>
+<span id="cb8-33"><a href="#cb8-33" tabindex="-1"></a><span class="fu">head</span>(my_design, <span class="dv">20</span>)</span>
+<span id="cb8-34"><a href="#cb8-34" tabindex="-1"></a><span class="co">#&gt;    Well Treatment_numbers Strain_letters</span></span>
+<span id="cb8-35"><a href="#cb8-35" tabindex="-1"></a><span class="co">#&gt; 1    A1               Tr1           StrA</span></span>
+<span id="cb8-36"><a href="#cb8-36" tabindex="-1"></a><span class="co">#&gt; 2    A2               Tr1           StrA</span></span>
+<span id="cb8-37"><a href="#cb8-37" tabindex="-1"></a><span class="co">#&gt; 3    A3               Tr1           StrA</span></span>
+<span id="cb8-38"><a href="#cb8-38" tabindex="-1"></a><span class="co">#&gt; 4    A4               Tr1           StrA</span></span>
+<span id="cb8-39"><a href="#cb8-39" tabindex="-1"></a><span class="co">#&gt; 5    A5               Tr1           StrA</span></span>
+<span id="cb8-40"><a href="#cb8-40" tabindex="-1"></a><span class="co">#&gt; 6    A6               Tr1           StrA</span></span>
+<span id="cb8-41"><a href="#cb8-41" tabindex="-1"></a><span class="co">#&gt; 7    A7               Tr2           StrA</span></span>
+<span id="cb8-42"><a href="#cb8-42" tabindex="-1"></a><span class="co">#&gt; 8    A8               Tr2           StrA</span></span>
+<span id="cb8-43"><a href="#cb8-43" tabindex="-1"></a><span class="co">#&gt; 9    A9               Tr2           StrA</span></span>
+<span id="cb8-44"><a href="#cb8-44" tabindex="-1"></a><span class="co">#&gt; 10  A10               Tr2           StrA</span></span>
+<span id="cb8-45"><a href="#cb8-45" tabindex="-1"></a><span class="co">#&gt; 11  A11               Tr2           StrA</span></span>
+<span id="cb8-46"><a href="#cb8-46" tabindex="-1"></a><span class="co">#&gt; 12  A12               Tr2           StrA</span></span>
+<span id="cb8-47"><a href="#cb8-47" tabindex="-1"></a><span class="co">#&gt; 13   B1               Tr1           StrA</span></span>
+<span id="cb8-48"><a href="#cb8-48" tabindex="-1"></a><span class="co">#&gt; 14   B2               Tr1           StrA</span></span>
+<span id="cb8-49"><a href="#cb8-49" tabindex="-1"></a><span class="co">#&gt; 15   B3               Tr1           StrA</span></span>
+<span id="cb8-50"><a href="#cb8-50" tabindex="-1"></a><span class="co">#&gt; 16   B4               Tr1           StrA</span></span>
+<span id="cb8-51"><a href="#cb8-51" tabindex="-1"></a><span class="co">#&gt; 17   B5               Tr1           StrA</span></span>
+<span id="cb8-52"><a href="#cb8-52" tabindex="-1"></a><span class="co">#&gt; 18   B6               Tr1           StrA</span></span>
+<span id="cb8-53"><a href="#cb8-53" tabindex="-1"></a><span class="co">#&gt; 19   B7               Tr2           StrA</span></span>
+<span id="cb8-54"><a href="#cb8-54" tabindex="-1"></a><span class="co">#&gt; 20   B8               Tr2           StrA</span></span></code></pre></div>
 </div>
 <div id="importing-multiple-pasted-block-shaped-designs" class="section level3">
 <h3>Importing multiple pasted block-shaped designs</h3>
