@@ -46,7 +46,7 @@ ex_dat_mrg <- dplyr::filter(ex_dat_mrg, Well %in% c("A1", "A7", "B4", "B10",
 ex_dat_mrg_sum <- 
   summarize(group_by(ex_dat_mrg, Bacteria_strain, Phage, Well),
             lag_time = lag_time(y = Measurements, x = Time, 
-                                deriv = deriv_percap5),
+                                deriv = deriv_percap5, blank = 0),
             max_percap = max_gc(deriv_percap5),
             max_percap_time = Time[which_max_gc(deriv_percap5)],
             max_percap_dens = Measurements[which_max_gc(deriv_percap5)],
@@ -72,7 +72,8 @@ ex_dat_mrg_sum <-
   summarize(group_by(ex_dat_mrg, Bacteria_strain, Phage, Well),
             min_dens = first_minima(Measurements, return = "y"),
             lag_time = lag_time(y = Measurements, x = Time, 
-                                deriv = deriv_percap5, y0 = min_dens),
+                                deriv = deriv_percap5, blank = 0, 
+                                y0 = min_dens),
             max_percap = max_gc(deriv_percap5),
             max_percap_time = Time[which_max_gc(deriv_percap5)],
             max_percap_dens = Measurements[which_max_gc(deriv_percap5)])

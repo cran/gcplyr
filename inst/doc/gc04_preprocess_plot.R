@@ -21,7 +21,7 @@ ex_dat_mrg <- merge_dfs(example_tidydata, example_design_tidy)
 
 ## -----------------------------------------------------------------------------
 example_data_and_designs_filtered <- 
-  filter(ex_dat_mrg, 
+  dplyr::filter(ex_dat_mrg, 
          Well != "B1", Bacteria_strain != "Strain 13")
 head(example_data_and_designs_filtered)
 
@@ -38,6 +38,34 @@ head(ex_dat_mrg)
 ex_dat_mrg$Time <- time_length(hms(ex_dat_mrg$Time), unit = "hour")
 
 head(ex_dat_mrg)
+
+## -----------------------------------------------------------------------------
+ex_dat_mrg <- make_example(vignette = 4, example = 2)
+ggplot(data = ex_dat_mrg,
+       aes(x = Time, y = Measurements, color = Well_type)) +
+  geom_point() +
+  ylim(0, NA)
+
+## -----------------------------------------------------------------------------
+mean_blank <- mean(dplyr::filter(ex_dat_mrg, Well_type == "Blank")$Measurements)
+mean_blank
+ex_dat_mrg$Meas_norm <- ex_dat_mrg$Measurements - mean_blank
+
+## -----------------------------------------------------------------------------
+ex_dat_mrg <- make_example(vignette = 4, example = 3)
+ggplot(data = ex_dat_mrg,
+       aes(x = Time, y = Measurements, color = Well_type)) +
+  geom_point() +
+  facet_grid(~Media)  +
+  ylim(0, NA)
+
+blank_data <- dplyr::filter(ex_dat_mrg, Well_type == "Blank")
+blank_data <- group_by(blank_data, Media)
+ex_dat_sum <- summarize(blank_data,
+                        mean_blank = mean(Measurements))
+head(ex_dat_sum)
+ex_dat_mrg <- merge_dfs(ex_dat_mrg, ex_dat_sum)
+ex_dat_mrg$Meas_norm <- ex_dat_mrg$Measurements - ex_dat_mrg$mean_blank
 
 ## -----------------------------------------------------------------------------
 # We have previously loaded ggplot2, but if you haven't already then
